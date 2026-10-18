@@ -1,0 +1,64 @@
+.inner { padding: 22px 26px 60px; max-width: 1260px; }
+.breadcrumb { display: flex; align-items: center; gap: 7px; color: var(--text-faint); font-size: 12.5px; margin-bottom: 12px; }
+.sep { color: var(--text-faint); }
+.head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 22px; }
+.head h1 { margin: 0; font-size: 24px; letter-spacing: -.02em; font-weight: 700; }
+.head p { margin: 4px 0 0; color: var(--text-muted); font-size: 13px; }
+.actions { margin-left: auto; display: flex; gap: 9px; }
+
+.sysNote { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--text-muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 3px 10px; }
+
+/* cards grid */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 6px; }
+.cardIcon { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); margin-bottom: 4px; }
+.cardTitle { font-weight: 650; font-size: 14px; }
+.cardKey { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-faint); }
+.cardDesc { font-size: 12.5px; color: var(--text-muted); }
+
+/* table */
+.tableWrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+.tableScroll { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; min-width: 640px; }
+.table thead th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-faint); font-weight: 700; padding: 11px 14px; background: var(--surface-inset); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.table tbody td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.table tbody tr:last-child td { border-bottom: 0; }
+.table tbody tr:hover { background: var(--surface-2); }
+.mono { font-family: var(--font-mono); font-size: 12.5px; }
+
+/* pages tree */
+.pageGroup { margin-bottom: 8px; }
+.moduleLabel { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-faint); font-weight: 700; padding: 14px 2px 6px; }
+.pageRow { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); margin-bottom: 6px; }
+.pageName { font-weight: 600; font-size: 13.5px; }
+.pageKey { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-faint); margin-left: auto; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 8px 34px; }
+.tab { font-size: 11.5px; font-weight: 600; color: var(--text-muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 2px 9px; }
+
+/* role list */
+.roleCard { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-sm); margin-bottom: 10px; }
+.roleAvatar { width: 38px; height: 38px; border-radius: var(--r-md); display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); flex: none; }
+.roleName { font-weight: 650; font-size: 14.5px; display: flex; align-items: center; gap: 8px; }
+.roleDesc { font-size: 12.5px; color: var(--text-muted); }
+.roleMeta { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.roleUsers { font-size: 12px; color: var(--text-muted); }
+
+/* matrix */
+.matrixBar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.roleSelect { height: 38px; padding: 0 12px; border-radius: var(--r-md); border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-family: inherit; font-size: 13.5px; font-weight: 600; min-width: 200px; }
+.dirty { font-size: 12px; color: var(--warning); font-weight: 600; }
+.matrixWrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+.matrixScroll { overflow-x: auto; }
+.matrix { width: 100%; border-collapse: collapse; min-width: 820px; }
+.matrix thead th { padding: 10px 8px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-faint); font-weight: 700; background: var(--surface-inset); border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
+.matrix thead th.pageCol { text-align: left; padding-left: 16px; position: sticky; left: 0; background: var(--surface-inset); z-index: 2; min-width: 220px; }
+.matrix td { padding: 8px; border-bottom: 1px solid var(--border); text-align: center; }
+.matrix td.pageCell { text-align: left; padding-left: 16px; position: sticky; left: 0; background: var(--surface); z-index: 1; }
+.matrix tr:hover td { background: var(--surface-2); }
+.matrix tr:hover td.pageCell { background: var(--surface-2); }
+.moduleRow td { background: var(--surface-inset); font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-faint); font-weight: 700; padding: 8px 16px; text-align: left; position: sticky; left: 0; }
+.pgName { font-weight: 600; font-size: 13px; }
+.pgName.tab { font-weight: 500; color: var(--text-muted); padding-left: 16px; font-size: 12.5px; }
+.cellToggle { display: inline-flex; }
+.colAll { cursor: pointer; color: var(--primary); font-size: 10px; font-weight: 700; text-transform: none; letter-spacing: 0; display: block; margin-top: 3px; }
+.colAll:hover { text-decoration: underline; }

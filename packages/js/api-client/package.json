@@ -1,0 +1,14 @@
+{
+  "name": "@future-erp/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed client for calling ERP backends (generated from contracts).",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "lint": "echo \"(lint) api-client\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  }
+}

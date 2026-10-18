@@ -1,0 +1,14 @@
+.wrap {
+  position: fixed; bottom: 22px; right: 22px;
+  z-index: 90; display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+  pointer-events: none;
+}
+.toast {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface); border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-md); border-radius: var(--r-md);
+  padding: 11px 15px; font-size: 13px; font-weight: 550; color: var(--text);
+  animation: toastIn .26s cubic-bezier(.22,.61,.36,1);
+}
+.toast svg { color: var(--success); flex: none; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }

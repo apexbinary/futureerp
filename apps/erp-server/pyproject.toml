@@ -1,0 +1,32 @@
+[project]
+name = "erp-server"
+version = "0.1.0"
+description = "FUTURE_ERP node runtime — hosts business modules (cloud multi-tenant OR self-hosted sealed)."
+requires-python = ">=3.12"
+dependencies = [
+    "django>=5.0",
+    "djangorestframework>=3.15",
+    "psycopg[binary]>=3.2",
+    "erp-core",
+    "erp-module-sdk",
+    "erp-entitlements",
+    "erp-rbac",
+    "erp-identity",
+    "erp-tenancy",
+    "erp-licensing-crypto",
+    "erp-events",
+    "erp-observability",
+    "erp-config",
+]
+
+[tool.uv.sources]
+erp-core = { workspace = true }
+erp-module-sdk = { workspace = true }
+erp-entitlements = { workspace = true }
+erp-rbac = { workspace = true }
+erp-identity = { workspace = true }
+erp-tenancy = { workspace = true }
+erp-licensing-crypto = { workspace = true }
+erp-events = { workspace = true }
+erp-observability = { workspace = true }
+erp-config = { workspace = true }

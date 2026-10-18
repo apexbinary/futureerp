@@ -1,0 +1,28 @@
+.asOf { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); font-size: 12.5px; color: var(--text-muted); }
+.asOf input { border: 0; background: transparent; color: var(--text); font-family: inherit; font-size: 12.5px; outline: none; }
+
+.empty { padding: 40px; text-align: center; color: var(--text-faint); }
+
+.balance { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: var(--r-sm); }
+.balance.ok { color: var(--success); background: var(--success-soft); }
+.balance.bad { color: var(--danger); background: var(--danger-soft); }
+
+/* P&L KPIs */
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.kpiLabel { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-faint); font-weight: 700; }
+.kpiVal { font-size: 23px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.pos { color: var(--success); }
+.neg { color: var(--danger); }
+
+.netRow { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding: 14px 16px; border-radius: var(--r-lg); border: 1px solid var(--border-strong); background: var(--surface-inset); font-weight: 700; font-size: 15px; }
+.netVal { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Balance sheet two-column */
+.bsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+.bsFooter { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 16px; }
+.bsFooter > div { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; border-radius: var(--r-lg); border: 1px solid var(--border-strong); background: var(--surface-inset); }
+.bsFootLabel { font-weight: 700; font-size: 13px; }
+.bsFootVal { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 15px; color: var(--primary); }
+
+@media (max-width: 860px) { .kpis { grid-template-columns: 1fr; } .bsGrid, .bsFooter { grid-template-columns: 1fr; } }

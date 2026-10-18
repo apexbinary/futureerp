@@ -1,0 +1,13 @@
+[project]
+name = "erp-events"
+version = "0.1.0"
+description = "Domain-event bus abstraction (how modules talk without importing each other)."
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["erp_events"]

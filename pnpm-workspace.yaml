@@ -1,0 +1,7 @@
+# pnpm workspace — the JavaScript/React side of the monorepo.
+# (Python side is a uv workspace, configured in the root pyproject.toml.)
+packages:
+  - "apps/master-admin-web"
+  - "apps/tenant-web"
+  - "packages/js/*"
+  - "modules/*/frontend"

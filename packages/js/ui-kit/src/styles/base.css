@@ -1,0 +1,120 @@
+/* ── Typeface: IBM Plex (enterprise-grade, self-hosted via @fontsource) ───── */
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-sans/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+/* FUTURE_ERP design tokens + base reset — shared by every frontend.
+   Direction: premium enterprise (SAP Fiori / Zoho class) — deep cobalt brand on
+   true cool-grey neutrals, crisp corners, hairline borders, data-dense. */
+:root {
+  /* neutrals — refined cool grey; deeper page ground so white surfaces lift */
+  --bg: #EAEEF4;
+  --surface: #FFFFFF;
+  --surface-2: #EFF2F8;
+  --surface-inset: #F5F8FC;
+  --border: #E1E6EE;
+  --border-strong: #C6CEDC;
+  --text: #0E121A;
+  --text-muted: #4F5867;
+  --text-faint: #8691A1;
+  /* brand — deep cobalt (replaces the AI violet) */
+  --primary: #1B5FD9;
+  --primary-hover: #1551C3;
+  --primary-contrast: #FFFFFF;
+  --primary-soft: #E7EEFC;
+  /* semantic — muted, professional (not neon) */
+  --success: #1A8A56; --success-soft: #E1F2E8;
+  --warning: #A1670B; --warning-soft: #F8EFDA;
+  --danger: #C8372D;  --danger-soft: #FBE4E1;
+  --focus: #1B5FD9;
+  --shadow-sm: 0 1px 2px rgba(15,23,42,.06), 0 1px 1px rgba(15,23,42,.04);
+  --shadow-md: 0 6px 16px -6px rgba(15,23,42,.13), 0 2px 6px -2px rgba(15,23,42,.08);
+  --shadow-lg: 0 20px 48px -14px rgba(15,23,42,.22);
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  /* crisp enterprise corners (was 6–18px) */
+  --r-sm: 3px; --r-md: 5px; --r-lg: 7px; --r-xl: 10px;
+  --topbar-h: 52px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0C0F15; --surface: #141922; --surface-2: #1C222D; --surface-inset: #10151D;
+    --border: #232B38; --border-strong: #323C4C;
+    --text: #E7ECF3; --text-muted: #98A2B2; --text-faint: #68727F;
+    --primary: #6AA0FF; --primary-hover: #83B2FF; --primary-contrast: #0C0F15; --primary-soft: #17243C;
+    --success: #43C98D; --success-soft: #122A20;
+    --warning: #D79A3B; --warning-soft: #2A2211;
+    --danger: #F07167; --danger-soft: #2E1715; --focus: #6AA0FF;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.45);
+    --shadow-md: 0 6px 18px -6px rgba(0,0,0,.6), 0 2px 6px -2px rgba(0,0,0,.4);
+    --shadow-lg: 0 22px 56px -14px rgba(0,0,0,.72);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0C0F15; --surface: #141922; --surface-2: #1C222D; --surface-inset: #10151D;
+  --border: #232B38; --border-strong: #323C4C;
+  --text: #E7ECF3; --text-muted: #98A2B2; --text-faint: #68727F;
+  --primary: #6AA0FF; --primary-hover: #83B2FF; --primary-contrast: #0C0F15; --primary-soft: #17243C;
+  --success: #43C98D; --success-soft: #122A20;
+  --warning: #D79A3B; --warning-soft: #2A2211;
+  --danger: #F07167; --danger-soft: #2E1715; --focus: #6AA0FF;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.45);
+  --shadow-md: 0 6px 18px -6px rgba(0,0,0,.6), 0 2px 6px -2px rgba(0,0,0,.4);
+  --shadow-lg: 0 22px 56px -14px rgba(0,0,0,.72);
+}
+:root[data-theme="light"] {
+  --bg: #EAEEF4; --surface: #FFFFFF; --surface-2: #EFF2F8; --surface-inset: #F5F8FC;
+  --border: #E1E6EE; --border-strong: #C6CEDC;
+  --text: #0E121A; --text-muted: #4F5867; --text-faint: #8691A1;
+  --primary: #1B5FD9; --primary-hover: #1551C3; --primary-contrast: #FFFFFF; --primary-soft: #E7EEFC;
+  --success: #1A8A56; --success-soft: #E1F2E8;
+  --warning: #A1670B; --warning-soft: #F8EFDA;
+  --danger: #C8372D; --danger-soft: #FBE4E1; --focus: #1B5FD9;
+  --shadow-sm: 0 1px 2px rgba(15,23,42,.06), 0 1px 1px rgba(15,23,42,.04);
+  --shadow-md: 0 6px 16px -6px rgba(15,23,42,.13), 0 2px 6px -2px rgba(15,23,42,.08);
+  --shadow-lg: 0 20px 48px -14px rgba(15,23,42,.22);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0; font-family: var(--font-sans); font-size: 13px; line-height: 1.45;
+  color: var(--text); background: var(--bg);
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  font-feature-settings: "cv05" 1, "ss01" 1;
+}
+::selection { background: var(--primary-soft); color: var(--primary-hover); }
+
+/* Tell the browser which theme native controls (scrollbars, inputs, pickers) should use */
+:root { color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { color-scheme: dark; } }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+/* ── Themed scrollbars (WebKit/Blink) ───────────────────────────────── */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 3px solid var(--bg);          /* inset look */
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-faint); background-clip: padding-box; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* Compact scrollbars inside panels/surfaces */
+.surfaceScroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.surfaceScroll::-webkit-scrollbar-thumb { border-width: 2px; }
+
+/* ── Themed scrollbars (Firefox) ────────────────────────────────────── */
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+button { font-family: inherit; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
+.tnum { font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--font-mono); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

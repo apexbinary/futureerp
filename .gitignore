@@ -1,0 +1,48 @@
+# ─── Python ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/dist/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Compiled / masked artifacts (Cython / build output)
+*.so
+*.pyd
+*.c.generated
+
+# ─── Django ───────────────────────────────────────────────
+*.log
+*.sqlite3
+/media/
+/staticfiles/
+local_settings.py
+
+# ─── Node / JS ────────────────────────────────────────────
+node_modules/
+dist/
+.turbo/
+*.tsbuildinfo
+.vite/
+coverage/
+
+# ─── Tooling caches ───────────────────────────────────────
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# ─── Secrets / keys (NEVER commit signing keys) ───────────
+*.pem
+*.key
+secrets/
+signing-keys/
+
+# ─── IDE / OS ─────────────────────────────────────────────
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

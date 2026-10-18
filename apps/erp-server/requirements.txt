@@ -1,0 +1,12 @@
+# erp-server — local dev dependencies (installed into apps/erp-server/.venv)
+# External (PyPI) packages only. Shared local libs (packages/python/erp-*) are added
+# as editable installs when we actually start importing them.
+
+Django>=5.0,<6.0
+djangorestframework>=3.15
+djangorestframework-simplejwt>=5.3     # JWT access + refresh
+argon2-cffi>=23.1                       # Argon2 password hashing
+django-cors-headers>=4.4               # CORS for the tenant SPA
+psycopg[binary]>=3.2                    # PostgreSQL driver
+python-dotenv>=1.0                      # loads the root .env
+drf-spectacular>=0.27                   # OpenAPI schema + Swagger/ReDoc UI

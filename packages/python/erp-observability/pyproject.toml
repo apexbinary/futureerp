@@ -1,0 +1,13 @@
+[project]
+name = "erp-observability"
+version = "0.1.0"
+description = "Structured logging, metrics, tracing."
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["erp_observability"]

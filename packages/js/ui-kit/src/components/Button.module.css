@@ -1,0 +1,17 @@
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 32px; padding: 0 13px; border-radius: var(--r-md);
+  font-weight: 600; font-size: 12.5px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text);
+  transition: background .15s, border-color .15s, transform .05s;
+}
+.btn:hover { background: var(--surface-2); border-color: var(--border-strong); }
+.btn:active { transform: translateY(1px); }
+.btn svg { width: 16px; height: 16px; }
+.primary { background: var(--primary); color: var(--primary-contrast); border-color: transparent; box-shadow: var(--shadow-sm); }
+.primary:hover { background: var(--primary-hover); border-color: transparent; }
+.ghost { background: transparent; border-color: transparent; color: var(--text-muted); }
+.ghost:hover { background: var(--surface-2); color: var(--text); }
+.icon { width: 32px; height: 32px; padding: 0; justify-content: center; color: var(--text-muted); border-color: transparent; background: transparent; }
+.icon:hover { background: var(--surface-2); color: var(--text); border-color: var(--border); }
+.icon svg { width: 18px; height: 18px; }

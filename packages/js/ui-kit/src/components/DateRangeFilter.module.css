@@ -1,0 +1,40 @@
+.wrap { position: relative; display: inline-flex; }
+.trigger {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 34px; padding: 0 12px; border-radius: var(--r-md);
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  font-size: 12.5px; font-weight: 600; cursor: pointer;
+  transition: border-color .15s;
+}
+.trigger:hover { border-color: var(--border-strong); }
+.trigger svg { color: var(--text-muted); }
+.chev { margin-left: 2px; }
+
+.pop {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 50;
+  width: 300px; background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-lg); overflow: hidden;
+  animation: fade .14s ease;
+}
+@keyframes fade { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.presets { display: flex; flex-direction: column; padding: 6px; max-height: 260px; overflow-y: auto; }
+.preset {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 10px; border: 0; background: transparent; color: var(--text);
+  border-radius: var(--r-sm); font-size: 13px; font-weight: 550; cursor: pointer; text-align: left;
+}
+.preset:hover { background: var(--surface-2); }
+.preset.active { background: var(--primary-soft); color: var(--primary); }
+.preset .range { font-size: 11px; color: var(--text-faint); font-family: var(--font-mono); }
+.preset.active .range { color: var(--primary); }
+
+.custom { border-top: 1px solid var(--border); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.customLabel { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-faint); font-weight: 700; }
+.dates { display: flex; align-items: center; gap: 8px; }
+.date { flex: 1; height: 34px; padding: 0 10px; border-radius: var(--r-md); border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-family: inherit; font-size: 12.5px; }
+.apply {
+  height: 34px; border-radius: var(--r-md); border: 0; background: var(--primary); color: var(--primary-contrast);
+  font-weight: 650; font-size: 12.5px; cursor: pointer; margin-top: 2px;
+}
+.apply:hover { background: var(--primary-hover); }
+.scrim { position: fixed; inset: 0; z-index: 49; }

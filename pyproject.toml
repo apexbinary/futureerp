@@ -1,0 +1,41 @@
+# Root of the Python side of the monorepo — a uv workspace.
+# Each app / shared package is a workspace member with its own pyproject.toml.
+[project]
+name = "future-erp"
+version = "0.1.0"
+description = "FUTURE_ERP — modular, entitlement-driven ERP platform (monorepo, Python side)."
+requires-python = ">=3.12"
+
+[tool.uv.workspace]
+members = [
+    "apps/control-plane",
+    "apps/erp-server",
+    "apps/agent",
+    "packages/python/*",
+]
+
+# ─── Ruff: lint + format (replaces black + isort + flake8) ────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["apps", "packages/python", "modules"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "DJ", "S", "PL"]
+ignore = ["S101"]  # allow asserts in tests
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S", "PL"]
+
+# ─── mypy: static typing ─────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["mypy_django_plugin.main"]
+exclude = ["migrations/"]
+
+# ─── pytest ──────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+addopts = "-ra -q"
+testpaths = ["apps", "packages/python", "modules"]
+python_files = ["test_*.py", "*_test.py"]

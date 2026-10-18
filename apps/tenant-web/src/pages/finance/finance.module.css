@@ -1,0 +1,50 @@
+/* Journal entry line editor + document view */
+.lineHead, .lineRow {
+  display: grid;
+  grid-template-columns: 1fr 72px 120px 1fr 28px;
+  gap: 8px;
+  align-items: center;
+}
+.lineHead {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-faint); font-weight: 700; padding: 0 2px 6px;
+}
+.lineRow { margin-bottom: 7px; }
+
+.sel, .inp {
+  height: 32px; width: 100%; padding: 0 9px; border-radius: var(--r-md);
+  border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
+  font-family: inherit; font-size: 12.5px;
+}
+.inp.amt { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.sel:focus, .inp:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 20%, transparent); }
+
+.dcToggle { display: flex; height: 32px; border: 1px solid var(--border-strong); border-radius: var(--r-md); overflow: hidden; }
+.dcBtn { flex: 1; border: 0; background: var(--surface); color: var(--text-muted); font-family: inherit; font-size: 12px; font-weight: 700; }
+.dcBtn.onD { background: var(--primary); color: var(--primary-contrast); }
+.dcBtn.onC { background: var(--warning); color: #fff; }
+
+.delBtn { width: 28px; height: 28px; display: grid; place-items: center; border: 0; background: transparent; color: var(--text-faint); border-radius: var(--r-sm); }
+.delBtn:hover { background: var(--danger-soft); color: var(--danger); }
+
+.addLine {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 4px;
+  height: 30px; padding: 0 11px; border: 1px dashed var(--border-strong); border-radius: var(--r-md);
+  background: transparent; color: var(--text-muted); font-size: 12px; font-weight: 600;
+}
+.addLine:hover { border-color: var(--primary); color: var(--primary); }
+
+/* Live balance strip */
+.balance { display: flex; align-items: center; gap: 16px; margin-top: 14px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface-inset); }
+.balItem { display: flex; flex-direction: column; gap: 1px; }
+.balLabel { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-faint); font-weight: 700; }
+.balVal { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 14px; }
+.balStatus { margin-left: auto; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.ok { color: var(--success); }
+.bad { color: var(--danger); }
+
+/* Document view */
+.docMeta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; margin: 14px 0 18px; }
+.docField { display: flex; flex-direction: column; gap: 2px; }
+.docK { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-faint); font-weight: 700; }
+.docV { font-size: 13px; color: var(--text); }

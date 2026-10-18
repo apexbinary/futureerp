@@ -1,0 +1,14 @@
+{
+  "name": "@future-erp/module-host",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Runtime that mounts licensed module micro-frontends into a shell.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "lint": "echo \"(lint) module-host\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  }
+}
