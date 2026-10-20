@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Search, Download, Plus, Cloud, Server, ArrowUpCircle } from "lucide-react";
 import {
   Button, Pill, type PillTone, Drawer, Field, FieldGrid, Chips, Chip, useToast,
+  DataTable, type Column,
 } from "@future-erp/ui-kit";
 import { tenants, type Tenant, type Health, type TenantStatus } from "../data/tenants";
 import styles from "./page.module.css";
@@ -56,6 +57,36 @@ export function TenantsPage() {
 
   const needsUpdate = current && current.version !== current.latestVersion;
 
+  const columns: Column<Tenant>[] = [
+    { key: "name", header: "Tenant", render: (t) => (
+      <div className={styles.cust}>
+        <span className={styles.ini}>{initials(t.name)}</span>
+        <div><div className={styles.custName}>{t.name}</div><div className={styles.custCode}>{t.code}</div></div>
+      </div>
+    ) },
+    { key: "deployment", header: "Deployment", width: 140, render: (t) => (
+      t.deployment === "cloud"
+        ? <Pill tone="primary"><Cloud size={13} /> Cloud</Pill>
+        : <Pill tone="neutral"><Server size={13} /> Self-hosted</Pill>
+    ) },
+    { key: "plan", header: "Plan", width: 110 },
+    { key: "modules", header: "Modules", emphasis: "secondary", render: (t) => (
+      <div className={styles.modules}>
+        {t.modules.slice(0, 3).map((m) => <span key={m} className={styles.modTag}>{m}</span>)}
+        {t.modules.length > 3 && <span className={styles.modMore}>+{t.modules.length - 3}</span>}
+      </div>
+    ) },
+    { key: "version", header: "Version", width: 130, emphasis: "secondary", render: (t) => (
+      <span className={styles.version}>{t.version}
+        {t.version !== t.latestVersion && <span className={styles.updateChip}><ArrowUpCircle size={11} /> {t.latestVersion}</span>}
+      </span>
+    ) },
+    { key: "users", header: "Users", numeric: true, width: 80 },
+    { key: "status", header: "Status", width: 110, render: (t) => <Pill tone={statusTone[t.status]} dot>{statusLabel[t.status]}</Pill> },
+    { key: "health", header: "Health", width: 110, render: (t) => <Pill tone={healthTone[t.health]} dot>{healthLabel[t.health]}</Pill> },
+    { key: "lastSeen", header: "Last seen", width: 120, emphasis: "secondary", render: (t) => <span className={styles.lastSeen}>{t.lastSeen}</span> },
+  ];
+
   return (
     <div className={styles.inner}>
       <div className={styles.breadcrumb}>
@@ -97,73 +128,8 @@ export function TenantsPage() {
         </div>
       </div>
 
-      <div className={styles.tableWrap}>
-        <div className={styles.tableScroll}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Tenant</th>
-                <th>Deployment</th>
-                <th>Plan</th>
-                <th>Modules</th>
-                <th>Version</th>
-                <th className={styles.num}>Users</th>
-                <th>Status</th>
-                <th>Health</th>
-                <th>Last seen</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((t) => (
-                <tr key={t.id} onClick={() => openTenant(t)}>
-                  <td>
-                    <div className={styles.cust}>
-                      <span className={styles.ini}>{initials(t.name)}</span>
-                      <div>
-                        <div className={styles.custName}>{t.name}</div>
-                        <div className={styles.custCode}>{t.code}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    {t.deployment === "cloud" ? (
-                      <Pill tone="primary"><Cloud size={13} /> Cloud</Pill>
-                    ) : (
-                      <Pill tone="neutral"><Server size={13} /> Self-hosted</Pill>
-                    )}
-                  </td>
-                  <td>{t.plan}</td>
-                  <td>
-                    <div className={styles.modules}>
-                      {t.modules.slice(0, 3).map((m) => (
-                        <span key={m} className={styles.modTag}>{m}</span>
-                      ))}
-                      {t.modules.length > 3 && <span className={styles.modMore}>+{t.modules.length - 3}</span>}
-                    </div>
-                  </td>
-                  <td>
-                    <span className={styles.version}>
-                      {t.version}
-                      {t.version !== t.latestVersion && (
-                        <span className={styles.updateChip}><ArrowUpCircle size={11} /> {t.latestVersion}</span>
-                      )}
-                    </span>
-                  </td>
-                  <td className={`${styles.num} tnum`}>{t.users}</td>
-                  <td><Pill tone={statusTone[t.status]} dot>{statusLabel[t.status]}</Pill></td>
-                  <td><Pill tone={healthTone[t.health]} dot>{healthLabel[t.health]}</Pill></td>
-                  <td className={styles.lastSeen}>{t.lastSeen}</td>
-                </tr>
-              ))}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={9} className={styles.empty}>No tenants match your filters.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable columns={columns} rows={rows} getRowId={(t) => t.id} onRowClick={openTenant}
+        minWidth={1000} empty="No tenants match your filters." />
 
       <Drawer
         open={open}

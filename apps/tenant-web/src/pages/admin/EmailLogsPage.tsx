@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import {
   Button, Pill, type PillTone, DateRangeFilter, type DateRange, useOptions,
+  DataTable, type Column,
 } from "@future-erp/ui-kit";
 import { useSmtp } from "./useSmtp";
 import type { SmtpLog } from "../../data/smtpApi";
@@ -22,6 +23,15 @@ export function EmailLogsPage() {
   useEffect(() => { load(); }, [load]);
 
   const fmt = (iso: string) => new Date(iso).toLocaleString();
+
+  const columns: Column<SmtpLog>[] = [
+    { key: "created_at", header: "When", mono: true, width: 180, render: (l) => <span style={{ whiteSpace: "nowrap" }}>{fmt(l.created_at)}</span> },
+    { key: "to_email", header: "Recipient" },
+    { key: "module_key", header: "Module", mono: true, emphasis: "secondary", render: (l) => l.module_key || "—" },
+    { key: "smtp_label", header: "SMTP", render: (l) => l.smtp_label || "—" },
+    { key: "status", header: "Status", width: 110, render: (l) => <Pill tone={tone[l.status] ?? "neutral"} dot>{l.status}</Pill> },
+    { key: "error", header: "Detail", render: (l) => <span style={{ color: "var(--text-muted)", fontSize: 12 }}>{l.error || "—"}</span> },
+  ];
 
   return (
     <div className={s.inner}>
@@ -46,28 +56,7 @@ export function EmailLogsPage() {
         <span style={{ marginLeft: "auto", fontSize: 12.5, color: "var(--text-faint)" }}>{logs.length} entries</span>
       </div>
 
-      <div className={s.tableWrap}>
-        <div className={s.tableScroll}>
-          <table className={s.table}>
-            <thead>
-              <tr><th>When</th><th>Recipient</th><th>Module</th><th>SMTP</th><th>Status</th><th>Detail</th></tr>
-            </thead>
-            <tbody>
-              {logs.map((l) => (
-                <tr key={l.id}>
-                  <td className={s.mono} style={{ whiteSpace: "nowrap" }}>{fmt(l.created_at)}</td>
-                  <td>{l.to_email}</td>
-                  <td className={s.mono}>{l.module_key || "—"}</td>
-                  <td>{l.smtp_label || "—"}</td>
-                  <td><Pill tone={tone[l.status] ?? "neutral"} dot>{l.status}</Pill></td>
-                  <td style={{ maxWidth: 320, color: "var(--text-muted)", fontSize: 12 }}>{l.error || "—"}</td>
-                </tr>
-              ))}
-              {logs.length === 0 && <tr><td colSpan={6} style={{ padding: 30, textAlign: "center", color: "var(--text-faint)" }}>No log entries.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable columns={columns} rows={logs} getRowId={(l) => l.id} empty="No log entries." />
     </div>
   );
 }

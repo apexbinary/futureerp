@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
-import { Button, Pill, type PillTone, Drawer, useToast } from "@future-erp/ui-kit";
+import { Button, Pill, type PillTone, Drawer, useToast, DataTable, type Column } from "@future-erp/ui-kit";
 import { useRbac } from "./useRbac";
 import { useSmtp } from "./useSmtp";
 import type { RbacUser, Role } from "../../data/rbacApi";
@@ -53,6 +53,13 @@ export function UsersPage() {
   const toggleRole = (id: string) =>
     setRoleIds((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]));
 
+  const columns: Column<RbacUser>[] = [
+    { key: "full_name", header: "Name", render: (u) => <span style={{ fontWeight: 600 }}>{u.full_name || "—"}{u.is_tenant_owner && " 👑"}</span> },
+    { key: "email", header: "Email", mono: true },
+    { key: "roles", header: "Roles", render: (u) => u.roles.map((r) => r.name).join(", ") || "—" },
+    { key: "status", header: "Status", width: 110, render: (u) => <Pill tone={statusTone[u.status] ?? "neutral"} dot>{u.status}</Pill> },
+  ];
+
   return (
     <div className={s.inner}>
       <div className={s.breadcrumb}><span>Admin</span><span className={s.sep}>›</span><span>Users</span></div>
@@ -66,26 +73,7 @@ export function UsersPage() {
         </div>
       </div>
 
-      <div className={s.tableWrap}>
-        <div className={s.tableScroll}>
-          <table className={s.table}>
-            <thead>
-              <tr><th>Name</th><th>Email</th><th>Roles</th><th>Status</th></tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id}>
-                  <td style={{ fontWeight: 600 }}>{u.full_name || "—"}{u.is_tenant_owner && " 👑"}</td>
-                  <td className={s.mono}>{u.email}</td>
-                  <td>{u.roles.map((r) => r.name).join(", ") || "—"}</td>
-                  <td><Pill tone={statusTone[u.status] ?? "neutral"} dot>{u.status}</Pill></td>
-                </tr>
-              ))}
-              {users.length === 0 && <tr><td colSpan={4} style={{ padding: 30, textAlign: "center", color: "var(--text-faint)" }}>No users yet.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable columns={columns} rows={users} getRowId={(u) => u.id} empty="No users yet." />
 
       <Drawer
         open={open}
