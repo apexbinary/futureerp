@@ -82,6 +82,25 @@ class VendorBill(ArchivableModel):
     def grand_total(self):
         return self.subtotal + self.tax_total
 
+    # ── open-item management ──
+    @property
+    def paid_amount(self):
+        from decimal import Decimal
+        from django.db.models import Sum
+        return self.allocations.filter(payment__status="posted").aggregate(s=Sum("amount"))["s"] or Decimal("0.00")
+
+    @property
+    def outstanding(self):
+        return self.grand_total - self.paid_amount
+
+    @property
+    def settlement_status(self):
+        if self.status != self.Status.POSTED:
+            return "unposted"
+        if self.outstanding <= 0:
+            return "paid"
+        return "partial" if self.paid_amount > 0 else "open"
+
 
 class VendorBillLine(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

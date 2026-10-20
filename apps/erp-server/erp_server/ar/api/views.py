@@ -1,8 +1,11 @@
+from datetime import date
+
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from erp_server.common.aging import build_aging
 from erp_server.common.archive import ArchiveViewSetMixin
 from erp_server.entitlements.permissions import HasEntitlement
 from erp_server.rbac.permissions import HasTenant
@@ -56,3 +59,23 @@ class CustomerInvoiceViewSet(_TenantScoped):
         except InvoiceError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(invoice).data)
+
+    @action(detail=False, methods=["get"])
+    def open_items(self, request):
+        """Posted invoices with an outstanding balance (optionally ?customer=)."""
+        qs = self.get_queryset().filter(status=CustomerInvoice.Status.POSTED)
+        cust = request.query_params.get("customer")
+        if cust:
+            qs = qs.filter(customer_id=cust)
+        data = [self.get_serializer(i).data for i in qs if i.outstanding > 0]
+        return Response(data)
+
+    @action(detail=False, methods=["get"])
+    def aging(self, request):
+        """A/R aging grid by customer."""
+        qs = self.get_queryset().filter(status=CustomerInvoice.Status.POSTED)
+        entries = [{
+            "party_id": str(i.customer_id), "party_name": i.customer.name,
+            "due_date": i.due_date or i.invoice_date, "outstanding": i.outstanding,
+        } for i in qs if i.outstanding > 0]
+        return Response(build_aging(entries, date.today()))

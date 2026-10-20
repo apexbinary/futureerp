@@ -10,9 +10,11 @@ export interface Payment extends Archivable {
   status: PayStatus; journal_entry: string | null; journal_document: string | null;
   created_at: string; posted_at: string | null;
 }
+export interface Allocation { invoice?: string | null; bill?: string | null; amount: string; }
 export interface NewPayment {
   company_code: string; direction: Direction; customer?: string | null; vendor?: string | null;
   payment_date: string; amount: string; bank_account?: string | null; reference?: string;
+  invoice?: string | null; bill?: string | null; allocations?: Allocation[];
 }
 
 type Fetcher = (path: string, init?: RequestInit) => Promise<Response>;

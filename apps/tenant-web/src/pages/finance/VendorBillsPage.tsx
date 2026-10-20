@@ -85,13 +85,14 @@ export function VendorBillsPage() {
     catch (e) { toast((e as Error).message); } finally { setBusy(false); }
   };
 
+  const settleTone: Record<string, PillTone> = { paid: "success", partial: "warning", open: "danger", unposted: "neutral" };
   const columns: Column<VendorBill>[] = [
     { key: "bill_number", header: "Bill", mono: true, width: 120, render: (b) => <span className="mono" style={{ fontWeight: 600 }}>{b.bill_number || "—"}</span> },
     { key: "vendor_name", header: "Vendor" },
     { key: "bill_date", header: "Date", width: 110, emphasis: "secondary" },
-    { key: "tax_total", header: "Input tax", numeric: true, width: 110, render: (b) => <span className="tnum">{money(b.tax_total)}</span> },
     { key: "grand_total", header: "Total", numeric: true, width: 120, render: (b) => <span className="tnum">{money(b.grand_total)}</span> },
-    { key: "status", header: "Status", width: 100, render: (b) => <Pill tone={statusTone[b.status]} dot>{b.status[0].toUpperCase() + b.status.slice(1)}</Pill> },
+    { key: "outstanding", header: "Outstanding", numeric: true, width: 120, render: (b) => <span className="tnum" style={{ color: Number(b.outstanding) > 0 ? "var(--danger)" : "var(--text-faint)" }}>{money(b.outstanding)}</span> },
+    { key: "settlement_status", header: "Settlement", width: 110, render: (b) => (b.status === "posted" ? <Pill tone={settleTone[b.settlement_status]} dot>{b.settlement_status}</Pill> : <Pill tone="neutral">{b.status}</Pill>) },
   ];
   const viewing = mode && mode !== "new" ? (mode as VendorBill) : null;
 

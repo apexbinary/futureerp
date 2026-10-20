@@ -42,7 +42,7 @@ class CompanyCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = CompanyCode
         fields = [
-            "id", "code", "name", "currency", "country", "gstin",
+            "id", "code", "name", "currency", "country", "state", "gstin",
             "chart_of_accounts", "chart_code", "created_at",
         ]
         read_only_fields = ["id", "created_at"]
@@ -78,7 +78,7 @@ class JournalEntryLineSerializer(serializers.ModelSerializer):
         model = JournalEntryLine
         fields = [
             "id", "line_number", "gl_account", "account_number", "account_name",
-            "debit_credit", "amount", "line_text", "cost_center",
+            "debit_credit", "amount", "line_text", "cost_center", "profit_center",
         ]
         read_only_fields = ["id"]
 
@@ -124,5 +124,6 @@ class JournalEntrySerializer(serializers.ModelSerializer):
                 amount=ln["amount"],
                 line_text=ln.get("line_text", ""),
                 cost_center=ln.get("cost_center"),
+                profit_center=ln.get("profit_center"),
             )
         return entry

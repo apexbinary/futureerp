@@ -62,3 +62,21 @@ class Payment(ArchivableModel):
         if self.direction == self.Direction.PAYMENT and self.vendor_id:
             return self.vendor.name
         return ""
+
+
+class PaymentAllocation(models.Model):
+    """Allocates part of a payment to a specific invoice/bill (open-item clearing).
+    One payment can allocate across many documents (split settlement)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("identity.Tenant", on_delete=models.CASCADE, related_name="payment_allocations")
+    payment = models.ForeignKey(Payment, on_delete=models.CASCADE, related_name="allocations")
+    invoice = models.ForeignKey("ar.CustomerInvoice", null=True, blank=True, on_delete=models.CASCADE, related_name="allocations")
+    bill = models.ForeignKey("ap.VendorBill", null=True, blank=True, on_delete=models.CASCADE, related_name="allocations")
+    amount = models.DecimalField(max_digits=18, decimal_places=2)
+
+    class Meta:
+        db_table = "pay_allocation"
+        ordering = ["payment"]
+
+    def __str__(self) -> str:
+        return f"{self.amount} → {self.invoice_id or self.bill_id}"

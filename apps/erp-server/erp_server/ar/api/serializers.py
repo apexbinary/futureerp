@@ -58,17 +58,21 @@ class CustomerInvoiceSerializer(serializers.ModelSerializer):
     subtotal = serializers.DecimalField(max_digits=18, decimal_places=2, read_only=True)
     tax_total = serializers.DecimalField(max_digits=18, decimal_places=2, read_only=True)
     grand_total = serializers.DecimalField(max_digits=18, decimal_places=2, read_only=True)
+    paid_amount = serializers.DecimalField(max_digits=18, decimal_places=2, read_only=True)
+    outstanding = serializers.DecimalField(max_digits=18, decimal_places=2, read_only=True)
+    settlement_status = serializers.CharField(read_only=True)
     journal_document = serializers.CharField(source="journal_entry.document_number", read_only=True, default=None)
 
     class Meta:
         model = CustomerInvoice
         fields = ["id", "company_code", "customer", "customer_name", "invoice_number",
                   "invoice_date", "due_date", "currency", "notes", "status",
-                  "subtotal", "tax_total", "grand_total", "journal_entry", "journal_document",
+                  "subtotal", "tax_total", "grand_total", "paid_amount", "outstanding",
+                  "settlement_status", "journal_entry", "journal_document",
                   "lines", "created_at", "posted_at"]
         read_only_fields = ["id", "invoice_number", "status", "subtotal", "tax_total",
-                            "grand_total", "journal_entry", "journal_document",
-                            "created_at", "posted_at"]
+                            "grand_total", "paid_amount", "outstanding", "settlement_status",
+                            "journal_entry", "journal_document", "created_at", "posted_at"]
 
     def validate_lines(self, lines):
         if not lines:

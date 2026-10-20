@@ -34,9 +34,16 @@ export interface CompanyCode {
   name: string;
   currency: string;
   country: string;
+  state?: string;
   gstin: string;
   chart_of_accounts: string;
   chart_code: string;
+}
+
+export interface PostingPeriod { id: string; period: number; start_date: string; end_date: string; is_open: boolean; }
+export interface FiscalYear {
+  id: string; company_code: string; company_code_code: string;
+  year: number; start_date: string; end_date: string; is_closed: boolean; periods: PostingPeriod[];
 }
 
 export interface JournalLine {
@@ -49,6 +56,7 @@ export interface JournalLine {
   amount: string;
   line_text?: string;
   cost_center?: string | null;
+  profit_center?: string | null;
 }
 
 export interface JournalEntry {
@@ -121,6 +129,10 @@ export function financeApi(authFetch: Fetcher) {
     accounts: resource<GLAccount>("gl-accounts"),
     charts: resource<ChartOfAccounts>("charts-of-accounts"),
     companyCodes: () => authFetch("/api/finance/company-codes/").then(j<CompanyCode[]>),
+    createCompanyCode: (body: Partial<CompanyCode>) => send("/api/finance/company-codes/", body).then(j<CompanyCode>),
+    updateCompanyCode: (id: string, body: Partial<CompanyCode>) => send(`/api/finance/company-codes/${id}/`, body, "PATCH").then(j<CompanyCode>),
+    fiscalYears: () => authFetch("/api/finance/fiscal-years/").then(j<FiscalYear[]>),
+    createFiscalYear: (body: Partial<FiscalYear>) => send("/api/finance/fiscal-years/", body).then(j<FiscalYear>),
     glAccounts: () => authFetch("/api/finance/gl-accounts/").then(j<GLAccount[]>),
     journalEntries: (status?: DocStatus) =>
       authFetch(`/api/finance/journal-entries/${status ? `?status=${status}` : ""}`).then(j<JournalEntry[]>),

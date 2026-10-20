@@ -39,6 +39,17 @@ export function PaymentsPage() {
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(today());
   const [bank, setBank] = useState("");
+  const [alloc, setAlloc] = useState<Record<string, string>>({});   // docId -> allocated amount
+  const [openDocs, setOpenDocs] = useState<{ id: string; label: string; outstanding: string }[]>([]);
+
+  // Load the party's open items when party/direction changes (for allocation).
+  useEffect(() => {
+    if (!open || !party) { setOpenDocs([]); return; }
+    const run = direction === "receipt"
+      ? ar.openItems(party).then((xs) => xs.map((i) => ({ id: i.id, label: `${i.invoice_number} · due ${i.due_date ?? i.invoice_date}`, outstanding: i.outstanding })))
+      : ap.openItems(party).then((xs) => xs.map((b) => ({ id: b.id, label: `${b.bill_number} · due ${b.due_date ?? b.bill_date}`, outstanding: b.outstanding })));
+    run.then(setOpenDocs).catch(() => setOpenDocs([]));
+  }, [open, party, direction, ar, ap]);
 
   const reload = () => api.list().then(setPayments).catch((e) => toast(e.message));
   useEffect(() => {
@@ -57,19 +68,26 @@ export function PaymentsPage() {
     { key: "payment", label: "Payments", count: payments.filter((p) => p.direction === "payment").length },
   ];
 
-  const openNew = () => { setDirection("receipt"); setParty(""); setAmount(""); setDate(today()); setBank(""); setOpen(true); };
+  const openNew = () => { setDirection("receipt"); setParty(""); setAmount(""); setDate(today()); setBank(""); setAlloc({}); setOpen(true); };
+
+  const allocatedTotal = Object.values(alloc).reduce((s, v) => s + (Number(v) || 0), 0);
+  const effectiveAmount = allocatedTotal > 0 ? String(allocatedTotal) : amount;
 
   const save = async () => {
     if (!companyCode) return toast("Company code unavailable.");
     if (!party) return toast(direction === "receipt" ? "Pick a customer." : "Pick a vendor.");
-    if (!(Number(amount) > 0)) return toast("Enter an amount.");
+    if (!(Number(effectiveAmount) > 0)) return toast("Enter an amount or allocate to open items.");
+    const allocations = Object.entries(alloc)
+      .filter(([, v]) => Number(v) > 0)
+      .map(([id, v]) => (direction === "receipt" ? { invoice: id, amount: v } : { bill: id, amount: v }));
     setBusy(true);
     try {
       const created = await api.create({
-        company_code: companyCode, direction, payment_date: date, amount,
+        company_code: companyCode, direction, payment_date: date, amount: effectiveAmount,
         bank_account: bank || null,
         customer: direction === "receipt" ? party : null,
         vendor: direction === "payment" ? party : null,
+        allocations: allocations.length ? allocations : undefined,
       });
       const posted = await api.post(created.id);
       toast(`Posted ${posted.payment_number} · G/L ${posted.journal_document}`);
@@ -118,14 +136,43 @@ export function PaymentsPage() {
         </div>
         <label className={f.docField} style={{ marginBottom: 12 }}>
           <span className={f.docK}>{direction === "receipt" ? "Customer" : "Vendor"}</span>
-          <select className={f.sel} value={party} onChange={(e) => setParty(e.target.value)}>
+          <select className={f.sel} value={party} onChange={(e) => { setParty(e.target.value); setAlloc({}); }}>
             <option value="">Select…</option>
             {parties.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.state}</option>)}
           </select>
         </label>
+
+        {party && openDocs.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            <span className={f.docK}>Allocate to open {direction === "receipt" ? "invoices" : "bills"} (optional — leave blank for on-account)</span>
+            <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden", marginTop: 6 }}>
+              {openDocs.map((d, idx) => (
+                <div key={d.id} style={{ display: "grid", gridTemplateColumns: "1fr 96px 92px", gap: 8, alignItems: "center", padding: "7px 10px", borderBottom: idx < openDocs.length - 1 ? "1px solid var(--border)" : "0" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.label}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-faint)" }}>outstanding {fmtMoney(d.outstanding)}</div>
+                  </div>
+                  <input className={`${f.inp} ${f.amt}`} inputMode="decimal" placeholder="0.00"
+                    value={alloc[d.id] ?? ""} onChange={(e) => setAlloc((a) => ({ ...a, [d.id]: e.target.value }))} />
+                  <button type="button" className={f.addLine} style={{ marginTop: 0, height: 30, justifyContent: "center" }}
+                    onClick={() => setAlloc((a) => ({ ...a, [d.id]: d.outstanding }))}>Full</button>
+                </div>
+              ))}
+            </div>
+            {allocatedTotal > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12.5, fontWeight: 600 }}>
+                <span>Allocated</span><span className="tnum">{fmtMoney(allocatedTotal)}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-          <label className={f.docField}><span className={f.docK}>Amount</span>
-            <input className={`${f.inp} ${f.amt}`} inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
+          <label className={f.docField}><span className={f.docK}>Amount{allocatedTotal > 0 ? " (from allocation)" : ""}</span>
+            <input className={`${f.inp} ${f.amt}`} inputMode="decimal" placeholder="0.00"
+              value={allocatedTotal > 0 ? String(allocatedTotal) : amount}
+              readOnly={allocatedTotal > 0}
+              onChange={(e) => setAmount(e.target.value)} /></label>
           <label className={f.docField}><span className={f.docK}>Date</span>
             <input type="date" className={f.inp} value={date} onChange={(e) => setDate(e.target.value)} /></label>
         </div>

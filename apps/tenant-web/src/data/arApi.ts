@@ -10,14 +10,19 @@ export interface InvoiceLine {
   amount?: string; taxes?: LineTax[];
 }
 export type InvoiceStatus = "draft" | "posted" | "cancelled";
+export type Settlement = "unposted" | "open" | "partial" | "paid";
 export interface CustomerInvoice {
   id: string; company_code: string; customer: string; customer_name: string;
   invoice_number: string; invoice_date: string; due_date: string | null;
   currency: string; notes: string; status: InvoiceStatus;
   subtotal: string; tax_total: string; grand_total: string;
+  paid_amount: string; outstanding: string; settlement_status: Settlement;
   journal_entry: string | null; journal_document: string | null;
   lines: InvoiceLine[]; created_at: string; posted_at: string | null;
 }
+
+export interface AgingRow { party_id: string; party: string; current: string; b1: string; b2: string; b3: string; b4: string; total: string; }
+export interface Aging { as_of: string; labels: Record<string, string>; rows: AgingRow[]; totals: Record<string, string>; }
 export interface NewInvoice {
   company_code: string; customer: string; invoice_date: string;
   due_date?: string | null; notes?: string; lines: InvoiceLine[];
@@ -53,5 +58,8 @@ export function arApi(authFetch: Fetcher) {
       authFetch(`/api/ar/invoices/${status ? `?status=${status}` : ""}`).then(j<CustomerInvoice[]>),
     createInvoice: (body: NewInvoice) => send("/api/ar/invoices/", body).then(j<CustomerInvoice>),
     postInvoice: (id: string) => send(`/api/ar/invoices/${id}/post_invoice/`, {}).then(j<CustomerInvoice>),
+    openItems: (customer?: string) =>
+      authFetch(`/api/ar/invoices/open_items/${customer ? `?customer=${customer}` : ""}`).then(j<CustomerInvoice[]>),
+    aging: () => authFetch("/api/ar/invoices/aging/").then(j<Aging>),
   };
 }

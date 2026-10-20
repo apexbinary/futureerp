@@ -4,7 +4,7 @@ import {
   Button, Pill, type PillTone, Drawer, Tabs, SectionHeader, DataTable, type Column, useToast,
   fmtMoney, useAuth,
 } from "@future-erp/ui-kit";
-import { coApi, type CostCenter } from "../../data/coApi";
+import { coApi, type CostCenter, type ProfitCenter } from "../../data/coApi";
 import { useFinance } from "./useFinance";
 import type {
   CompanyCode, GLAccount, JournalEntry, JournalLine, DocStatus, DC,
@@ -17,8 +17,8 @@ const statusTone: Record<DocStatus, PillTone> = {
 };
 const money = (v: string | number) => fmtMoney(v);
 
-type Draft = { gl_account: string; debit_credit: DC; amount: string; cost_center: string };
-const emptyLine = (): Draft => ({ gl_account: "", debit_credit: "D", amount: "", cost_center: "" });
+type Draft = { gl_account: string; debit_credit: DC; amount: string; cost_center: string; profit_center: string };
+const emptyLine = (): Draft => ({ gl_account: "", debit_credit: "D", amount: "", cost_center: "", profit_center: "" });
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function JournalEntriesPage() {
@@ -26,6 +26,7 @@ export function JournalEntriesPage() {
   const { authFetch } = useAuth();
   const co = useMemo(() => coApi(authFetch), [authFetch]);
   const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
+  const [profitCenters, setProfitCenters] = useState<ProfitCenter[]>([]);
   const toast = useToast();
 
   const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -52,6 +53,7 @@ export function JournalEntriesPage() {
       .catch((e) => toast(e.message))
       .finally(() => setLoading(false));
     co.costCenters.list().then(setCostCenters).catch(() => {});
+    co.profitCenters.list().then(setProfitCenters).catch(() => {});
   }, [api, co]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rows = useMemo(
@@ -92,7 +94,8 @@ export function JournalEntriesPage() {
         header_text: header,
         lines: valid.map((l, i) => ({
           line_number: i + 1, gl_account: l.gl_account,
-          debit_credit: l.debit_credit, amount: l.amount, cost_center: l.cost_center || null,
+          debit_credit: l.debit_credit, amount: l.amount,
+          cost_center: l.cost_center || null, profit_center: l.profit_center || null,
         }) as JournalLine),
       });
       if (thenPost) {
@@ -214,11 +217,11 @@ export function JournalEntriesPage() {
               <input className={f.inp} placeholder="e.g. Office supplies paid by bank" value={header} onChange={(e) => setHeader(e.target.value)} />
             </label>
 
-            <div className={f.lineHead}>
-              <span>Account</span><span>D/C</span><span style={{ textAlign: "right" }}>Amount</span><span>Cost center</span><span />
+            <div className={f.lineHead} style={{ gridTemplateColumns: "1fr 52px 84px 96px 96px 26px" }}>
+              <span>Account</span><span>D/C</span><span style={{ textAlign: "right" }}>Amount</span><span>Cost ctr</span><span>Profit ctr</span><span />
             </div>
             {lines.map((l, i) => (
-              <div className={f.lineRow} key={i}>
+              <div className={f.lineRow} key={i} style={{ gridTemplateColumns: "1fr 52px 84px 96px 96px 26px" }}>
                 <select className={f.sel} value={l.gl_account} onChange={(e) => setLine(i, { gl_account: e.target.value })}>
                   <option value="">Select…</option>
                   {accounts.map((a) => (
@@ -230,9 +233,13 @@ export function JournalEntriesPage() {
                   <button type="button" className={`${f.dcBtn} ${l.debit_credit === "C" ? f.onC : ""}`} onClick={() => setLine(i, { debit_credit: "C" })}>C</button>
                 </div>
                 <input className={`${f.inp} ${f.amt}`} inputMode="decimal" placeholder="0.00" value={l.amount} onChange={(e) => setLine(i, { amount: e.target.value })} />
-                <select className={f.sel} value={l.cost_center} onChange={(e) => setLine(i, { cost_center: e.target.value })}>
+                <select className={f.sel} value={l.cost_center} onChange={(e) => setLine(i, { cost_center: e.target.value })} title="Cost center">
                   <option value="">—</option>
-                  {costCenters.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}
+                  {costCenters.map((c) => <option key={c.id} value={c.id}>{c.code}</option>)}
+                </select>
+                <select className={f.sel} value={l.profit_center} onChange={(e) => setLine(i, { profit_center: e.target.value })} title="Profit center">
+                  <option value="">—</option>
+                  {profitCenters.map((c) => <option key={c.id} value={c.id}>{c.code}</option>)}
                 </select>
                 <button type="button" className={f.delBtn} onClick={() => setLines((ls) => ls.filter((_, idx) => idx !== i))} aria-label="Remove line">
                   <Trash2 size={15} />

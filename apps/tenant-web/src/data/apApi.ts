@@ -9,14 +9,19 @@ export interface BillLine {
   amount?: string; taxes?: LineTax[];
 }
 export type BillStatus = "draft" | "posted" | "cancelled";
+export type Settlement = "unposted" | "open" | "partial" | "paid";
 export interface VendorBill extends Archivable {
   id: string; company_code: string; vendor: string; vendor_name: string;
   bill_number: string; vendor_ref: string; bill_date: string; due_date: string | null;
   currency: string; notes: string; status: BillStatus;
   subtotal: string; tax_total: string; grand_total: string;
+  paid_amount: string; outstanding: string; settlement_status: Settlement;
   journal_entry: string | null; journal_document: string | null;
   lines: BillLine[]; created_at: string; posted_at: string | null;
 }
+
+export interface AgingRow { party_id: string; party: string; current: string; b1: string; b2: string; b3: string; b4: string; total: string; }
+export interface Aging { as_of: string; labels: Record<string, string>; rows: AgingRow[]; totals: Record<string, string>; }
 export interface NewBill {
   company_code: string; vendor: string; bill_date: string; vendor_ref?: string; lines: BillLine[];
 }
@@ -46,5 +51,8 @@ export function apApi(authFetch: Fetcher) {
     bills: (status?: BillStatus) => authFetch(`/api/ap/bills/${status ? `?status=${status}` : ""}`).then(j<VendorBill[]>),
     createBill: (body: NewBill) => send("/api/ap/bills/", body).then(j<VendorBill>),
     postBill: (id: string) => send(`/api/ap/bills/${id}/post_bill/`, {}).then(j<VendorBill>),
+    openItems: (vendor?: string) =>
+      authFetch(`/api/ap/bills/open_items/${vendor ? `?vendor=${vendor}` : ""}`).then(j<VendorBill[]>),
+    aging: () => authFetch("/api/ap/bills/aging/").then(j<Aging>),
   };
 }

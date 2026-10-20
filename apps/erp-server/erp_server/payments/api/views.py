@@ -27,7 +27,7 @@ class PaymentViewSet(ArchiveViewSetMixin, viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        serializer.save(tenant=self.request.user.tenant)
+        serializer.save()  # tenant is set inside the serializer's create()
 
     @action(detail=True, methods=["post"])
     def post_payment(self, request, pk=None):

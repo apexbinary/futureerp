@@ -17,6 +17,9 @@ import { VendorBillsPage } from "./pages/finance/VendorBillsPage";
 import { PaymentsPage } from "./pages/finance/PaymentsPage";
 import { AssetsPage } from "./pages/finance/AssetsPage";
 import { CostCentersPage } from "./pages/finance/CostCentersPage";
+import { AgingPage } from "./pages/finance/AgingPage";
+import { ProfitCentersPage } from "./pages/finance/ProfitCentersPage";
+import { OrganizationPage } from "./pages/finance/OrganizationPage";
 import { Placeholder } from "./pages/Placeholder";
 import { UsersPage } from "./pages/admin/UsersPage";
 import { RolesPage } from "./pages/admin/RolesPage";
@@ -43,6 +46,9 @@ const realPages: Record<string, ReactElement> = {
   "/finance/payments": <PaymentsPage />,
   "/finance/assets": <AssetsPage />,
   "/finance/cost-centers": <CostCentersPage />,
+  "/finance/profit-centers": <ProfitCentersPage />,
+  "/finance/organization": <OrganizationPage />,
+  "/finance/aging": <AgingPage />,
   "/admin": <UsersPage />,
   "/admin/roles": <RolesPage />,
   "/admin/pages": <PagesPage />,
@@ -63,7 +69,10 @@ const PATH_ENTITLEMENT: Record<string, string> = {
   "/finance/accounts": "finance.gl",
   "/finance/journal": "finance.gl",
   "/finance/payments": "finance.gl",
+  "/finance/aging": "finance.gl",
   "/finance/reports": "finance.gl",
+  "/finance/profit-centers": "finance.co",
+  "/finance/organization": "finance.gl",
   "/finance/tax": "finance.tax",
   "/finance/assets": "finance.aa",
   "/finance/cost-centers": "finance.co",

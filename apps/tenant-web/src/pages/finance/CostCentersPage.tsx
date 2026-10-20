@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth, DataTable, type Column, SectionHeader, useToast, fmtMoney } from "@future-erp/ui-kit";
 import { EntityManager, archPill, type Field } from "../../components/EntityManager";
-import { coApi, type CostCenter, type CCReportRow } from "../../data/coApi";
+import { coApi, type CostCenter, type DimReportRow } from "../../data/coApi";
 import page from "../page.module.css";
 
 export function CostCentersPage() {
   const { authFetch } = useAuth();
   const api = useMemo(() => coApi(authFetch), [authFetch]);
   const toast = useToast();
-  const [report, setReport] = useState<CCReportRow[]>([]);
+  const [report, setReport] = useState<DimReportRow[]>([]);
   const [total, setTotal] = useState("0");
 
-  useEffect(() => { api.report().then((r) => { setReport(r.rows); setTotal(r.total); }).catch((e) => toast(e.message)); }, [api]); // eslint-disable-line
+  useEffect(() => { api.costReport().then((r) => { setReport(r.rows); setTotal(r.total); }).catch((e) => toast(e.message)); }, [api]); // eslint-disable-line
 
   const columns: Column<CostCenter>[] = [
     { key: "code", header: "Code", mono: true, width: 110 },
@@ -25,7 +25,7 @@ export function CostCentersPage() {
     { key: "name", label: "Name", full: true },
     { key: "manager", label: "Manager", full: true },
   ];
-  const repCols: Column<CCReportRow>[] = [
+  const repCols: Column<DimReportRow>[] = [
     { key: "code", header: "Code", mono: true, width: 110 },
     { key: "name", header: "Cost center" },
     { key: "amount", header: "Net spend", numeric: true, width: 160, render: (r) => fmtMoney(r.amount) },
@@ -48,7 +48,7 @@ export function CostCentersPage() {
 
       <div style={{ height: 24 }} />
       <SectionHeader title="Spend by cost center" right={`Total ${fmtMoney(total)}`} />
-      <DataTable columns={repCols} rows={report} getRowId={(r) => r.cost_center}
+      <DataTable columns={repCols} rows={report} getRowId={(r) => r.id}
         empty="No cost-center-tagged postings yet."
         totalRow={{ __label: "Total", amount: <span className="tnum">{fmtMoney(total)}</span> }} />
     </div>

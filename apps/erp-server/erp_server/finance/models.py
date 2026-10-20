@@ -263,7 +263,10 @@ class JournalEntryLine(models.Model):
     cost_center = models.ForeignKey(
         "co.CostCenter", null=True, blank=True, on_delete=models.SET_NULL, related_name="journal_lines",
     )
-    # (future: profit_center, segment, partner, tax_code ...)
+    profit_center = models.ForeignKey(
+        "co.ProfitCenter", null=True, blank=True, on_delete=models.SET_NULL, related_name="journal_lines",
+    )
+    # (future: segment, partner, tax_code ...)
 
     class Meta:
         db_table = "fin_journal_line"
