@@ -58,7 +58,9 @@ export function DataTable<T>({
   const shown = usePaging ? rows.slice(start, start + size) : rows;
   const from = total === 0 ? 0 : start + 1;
   const to = usePaging ? Math.min(start + size, total) : total;
-  const showBar = total > Math.min(...pageSizeOptions);
+  // Always show the record-count bar when there's data; nav appears when >1 page.
+  const showBar = paginate && total > 0;
+  const showNav = pageCount > 1;
 
   return (
     <div className={styles.wrap}>
@@ -145,13 +147,15 @@ export function DataTable<T>({
                 ))}
               </select>
             </label>
-            <div className={styles.pagerNav}>
-              <button className={styles.pageBtn} disabled={page <= 1} onClick={() => setPage(1)} aria-label="First page"><ChevronsLeft size={15} /></button>
-              <button className={styles.pageBtn} disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} aria-label="Previous page"><ChevronLeft size={15} /></button>
-              <span className={styles.pageNum}>Page {page} of {pageCount}</span>
-              <button className={styles.pageBtn} disabled={page >= pageCount} onClick={() => setPage((p) => Math.min(pageCount, p + 1))} aria-label="Next page"><ChevronRight size={15} /></button>
-              <button className={styles.pageBtn} disabled={page >= pageCount} onClick={() => setPage(pageCount)} aria-label="Last page"><ChevronsRight size={15} /></button>
-            </div>
+            {showNav && (
+              <div className={styles.pagerNav}>
+                <button className={styles.pageBtn} disabled={page <= 1} onClick={() => setPage(1)} aria-label="First page"><ChevronsLeft size={15} /></button>
+                <button className={styles.pageBtn} disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} aria-label="Previous page"><ChevronLeft size={15} /></button>
+                <span className={styles.pageNum}>Page {page} of {pageCount}</span>
+                <button className={styles.pageBtn} disabled={page >= pageCount} onClick={() => setPage((p) => Math.min(pageCount, p + 1))} aria-label="Next page"><ChevronRight size={15} /></button>
+                <button className={styles.pageBtn} disabled={page >= pageCount} onClick={() => setPage(pageCount)} aria-label="Last page"><ChevronsRight size={15} /></button>
+              </div>
+            )}
           </div>
         </div>
       )}
