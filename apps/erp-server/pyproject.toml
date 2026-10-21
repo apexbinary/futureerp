@@ -4,8 +4,13 @@ version = "0.1.0"
 description = "FUTURE_ERP node runtime — hosts business modules (cloud multi-tenant OR self-hosted sealed)."
 requires-python = ">=3.12"
 dependencies = [
-    "django>=5.0",
+    "django>=5.0,<6.0",
     "djangorestframework>=3.15",
+    "djangorestframework-simplejwt>=5.3",
+    "argon2-cffi>=23.1",
+    "django-cors-headers>=4.4",
+    "python-dotenv>=1.0",
+    "drf-spectacular>=0.27",
     "psycopg[binary]>=3.2",
     "erp-core",
     "erp-module-sdk",
