@@ -73,6 +73,9 @@ def post_bill(bill: VendorBill) -> VendorBill:
     if not payable_acct:
         raise BillError("No Trade Payables account configured.")
 
+    if not bill.bill_number:
+        bill.bill_number = _next_bill_number(tenant, cc)
+
     VendorBillLineTax.objects.filter(line__bill=bill).delete()
 
     for ln in lines:
@@ -100,6 +103,10 @@ def post_bill(bill: VendorBill) -> VendorBill:
         tenant=tenant, company_code=cc, document_type=JournalEntry.DocumentType.VENDOR_INVOICE,
         posting_date=bill.bill_date, document_date=bill.bill_date, currency=bill.currency,
         header_text=f"Vendor bill · {bill.vendor.name}",
+        source_type=JournalEntry.SourceType.AP_BILL,
+        source_id=bill.id, source_number=bill.bill_number,
+        party_type=JournalEntry.PartyType.VENDOR,
+        party_code=bill.vendor.code, party_name=bill.vendor.name,
     )
     n = 0
     for acct_id, amt in expense_by_acct.items():
@@ -118,12 +125,13 @@ def post_bill(bill: VendorBill) -> VendorBill:
     JournalEntryLine.objects.create(
         tenant=tenant, journal_entry=je, line_number=n, gl_account=payable_acct,
         debit_credit=JournalEntryLine.DC.CREDIT, amount=payable_total,
+        posting_key="31",  # SAP: vendor invoice (credit)
+        assignment=bill.vendor.code,
         line_text=f"Payable · {bill.vendor.name}",
     )
 
     je = post_journal_entry(je)
 
-    bill.bill_number = _next_bill_number(tenant, cc)
     bill.journal_entry = je
     bill.status = VendorBill.Status.POSTED
     bill.posted_at = datetime.now(timezone.utc)

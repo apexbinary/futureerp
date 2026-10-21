@@ -76,6 +76,6 @@ class CustomerInvoiceViewSet(_TenantScoped):
         qs = self.get_queryset().filter(status=CustomerInvoice.Status.POSTED)
         entries = [{
             "party_id": str(i.customer_id), "party_name": i.customer.name,
-            "due_date": i.due_date or i.invoice_date, "outstanding": i.outstanding,
+            "due_date": i.due_date or i.baseline_date or i.invoice_date, "outstanding": i.outstanding,
         } for i in qs if i.outstanding > 0]
         return Response(build_aging(entries, date.today()))

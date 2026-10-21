@@ -78,9 +78,10 @@ class JournalEntryLineSerializer(serializers.ModelSerializer):
         model = JournalEntryLine
         fields = [
             "id", "line_number", "gl_account", "account_number", "account_name",
-            "debit_credit", "amount", "line_text", "cost_center", "profit_center",
+            "debit_credit", "posting_key", "amount", "line_text", "assignment",
+            "cost_center", "profit_center", "business_area", "segment",
         ]
-        read_only_fields = ["id"]
+        read_only_fields = ["id", "posting_key"]
 
 
 class JournalEntrySerializer(serializers.ModelSerializer):
@@ -96,11 +97,14 @@ class JournalEntrySerializer(serializers.ModelSerializer):
             "id", "company_code", "company_code_code", "document_number", "fiscal_year",
             "document_type", "posting_date", "document_date", "currency", "reference",
             "header_text", "status", "reverses",
+            "source_type", "source_id", "source_number",
+            "party_type", "party_code", "party_name",
             "total_debit", "total_credit", "is_balanced",
             "lines", "created_at", "posted_at",
         ]
         read_only_fields = [
             "id", "document_number", "fiscal_year", "status", "reverses",
+            "source_id", "source_number",
             "total_debit", "total_credit", "is_balanced", "created_at", "posted_at",
         ]
 
@@ -123,7 +127,10 @@ class JournalEntrySerializer(serializers.ModelSerializer):
                 debit_credit=ln["debit_credit"],
                 amount=ln["amount"],
                 line_text=ln.get("line_text", ""),
+                assignment=ln.get("assignment", ""),
                 cost_center=ln.get("cost_center"),
                 profit_center=ln.get("profit_center"),
+                business_area=ln.get("business_area", ""),
+                segment=ln.get("segment", ""),
             )
         return entry

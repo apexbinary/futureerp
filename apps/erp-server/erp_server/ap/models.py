@@ -24,6 +24,7 @@ class Vendor(ArchivableModel):
     gstin = models.CharField(max_length=20, blank=True)
     state = models.CharField(max_length=64, blank=True)
     email = models.EmailField(blank=True)
+    payment_terms = models.CharField(max_length=32, blank=True)
     payable_account = models.ForeignKey(
         "finance.GLAccount", null=True, blank=True, on_delete=models.SET_NULL, related_name="ap_vendors",
     )
@@ -51,7 +52,9 @@ class VendorBill(ArchivableModel):
     bill_number = models.CharField(max_length=20, blank=True)
     vendor_ref = models.CharField(max_length=64, blank=True)   # vendor's own invoice no.
     bill_date = models.DateField()
+    baseline_date = models.DateField(null=True, blank=True)   # SAP: baseline date for due/aging
     due_date = models.DateField(null=True, blank=True)
+    payment_terms = models.CharField(max_length=32, blank=True)
     currency = models.CharField(max_length=3, default="INR")
     notes = models.CharField(max_length=255, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)

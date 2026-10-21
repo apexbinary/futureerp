@@ -10,13 +10,34 @@
   transition: transform .26s cubic-bezier(.22,.61,.36,1); display: flex; flex-direction: column;
 }
 .drawer.show { transform: translateX(0); }
-.head { padding: 18px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 12px; }
+
+/* ── Centered modal pop-up (default variant) ─────────────────────────── */
+.modalScrim {
+  position: fixed; inset: 0; z-index: 70; background: rgba(6,8,14,.5);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: clamp(16px, 6vh, 72px) 20px;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+  overflow-y: auto; backdrop-filter: blur(2px);
+}
+.modalScrim.show { opacity: 1; pointer-events: auto; }
+.modal {
+  width: 640px; max-width: 100%; margin: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg, 12px);
+  box-shadow: var(--shadow-lg); display: flex; flex-direction: column;
+  max-height: calc(100vh - clamp(32px, 12vh, 144px));
+  transform: translateY(8px) scale(.985); opacity: 0;
+  transition: transform .22s cubic-bezier(.22,.61,.36,1), opacity .22s;
+}
+.modal.lg { width: 860px; }
+.modal.show { transform: translateY(0) scale(1); opacity: 1; }
+
+.head { padding: 18px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 12px; }
 .title { margin: 0; font-size: 17px; letter-spacing: -.01em; font-weight: 700; }
 .sub { color: var(--text-muted); font-size: 12.5px; margin-top: 2px; }
 .close { margin-left: auto; width: 32px; height: 32px; border-radius: var(--r-md); border: 1px solid transparent; background: transparent; color: var(--text-muted); display: grid; place-items: center; transition: background .14s, color .14s; }
 .close:hover { background: var(--surface-2); color: var(--text); }
-.body { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; flex: 1; }
-.foot { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; gap: 9px; }
+.body { padding: 22px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; flex: 1; }
+.foot { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 9px; }
 .fieldGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .field { display: flex; flex-direction: column; gap: 3px; }
 .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-faint); font-weight: 700; }

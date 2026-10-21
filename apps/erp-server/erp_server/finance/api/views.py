@@ -77,9 +77,36 @@ class JournalEntryViewSet(_TenantScoped):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        st = self.request.query_params.get("status")
+        q = self.request.query_params
+        st = q.get("status")
         if st:
             qs = qs.filter(status=st)
+        # Document-flow filters — "all journals for this customer / this source /
+        # this originating document / this period".
+        if q.get("source_type"):
+            qs = qs.filter(source_type=q["source_type"])
+        if q.get("source_id"):
+            qs = qs.filter(source_id=q["source_id"])
+        if q.get("party_type"):
+            qs = qs.filter(party_type=q["party_type"])
+        if q.get("party_code"):
+            qs = qs.filter(party_code=q["party_code"])
+        if q.get("document_type"):
+            qs = qs.filter(document_type=q["document_type"])
+        if q.get("company_code"):
+            qs = qs.filter(company_code_id=q["company_code"])
+        if q.get("from"):
+            qs = qs.filter(posting_date__gte=q["from"])
+        if q.get("to"):
+            qs = qs.filter(posting_date__lte=q["to"])
+        if q.get("q"):
+            from django.db.models import Q
+            term = q["q"]
+            qs = qs.filter(
+                Q(document_number__icontains=term) | Q(reference__icontains=term)
+                | Q(header_text__icontains=term) | Q(party_name__icontains=term)
+                | Q(source_number__icontains=term)
+            )
         return qs
 
     def perform_create(self, serializer):

@@ -175,6 +175,21 @@ class JournalEntry(models.Model):
         POSTED = "posted", "Posted"
         REVERSED = "reversed", "Reversed"
 
+    class SourceType(models.TextChoices):
+        """Originating transaction (SAP 'reference transaction', AWTYP)."""
+        MANUAL = "manual", "Manual entry"
+        AR_INVOICE = "ar_invoice", "Customer invoice"
+        AP_BILL = "ap_bill", "Vendor invoice"
+        AR_RECEIPT = "ar_receipt", "Customer receipt"
+        AP_PAYMENT = "ap_payment", "Vendor payment"
+        DEPRECIATION = "depreciation", "Depreciation"
+        REVERSAL = "reversal", "Reversal"
+
+    class PartyType(models.TextChoices):
+        CUSTOMER = "customer", "Customer"
+        VENDOR = "vendor", "Vendor"
+        BANK = "bank", "Bank"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey(
         "identity.Tenant", on_delete=models.CASCADE, related_name="journal_entries"
@@ -194,6 +209,21 @@ class JournalEntry(models.Model):
     reference = models.CharField(max_length=64, blank=True)
     header_text = models.CharField(max_length=255, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
+
+    # ── Document flow / traceability (SAP AWTYP/AWKEY + business partner) ──
+    # Which transaction created this document, and a pointer back to it. Lets us
+    # fetch "all journals for this customer / this invoice / all receipts" cheaply
+    # without walking reverse relations across apps.
+    source_type = models.CharField(
+        max_length=16, choices=SourceType.choices, default=SourceType.MANUAL
+    )
+    source_id = models.UUIDField(null=True, blank=True)          # id of the originating document
+    source_number = models.CharField(max_length=32, blank=True)  # its human number (INV-00001 …)
+    # Business partner this document settles against (denormalized for fast filtering).
+    party_type = models.CharField(max_length=10, choices=PartyType.choices, blank=True)
+    party_code = models.CharField(max_length=32, blank=True)
+    party_name = models.CharField(max_length=128, blank=True)
+
     # Reversal linkage — never hard-delete a posted document.
     reverses = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="reversed_by"
@@ -210,6 +240,11 @@ class JournalEntry(models.Model):
         ordering = ["-created_at"]
         unique_together = [("company_code", "fiscal_year", "document_number")]
         verbose_name_plural = "journal entries"
+        indexes = [
+            models.Index(fields=["tenant", "party_type", "party_code"]),
+            models.Index(fields=["tenant", "source_type"]),
+            models.Index(fields=["tenant", "source_id"]),
+        ]
 
     def __str__(self) -> str:
         return self.document_number or f"(draft {self.id})"
@@ -257,21 +292,32 @@ class JournalEntryLine(models.Model):
         GLAccount, on_delete=models.PROTECT, related_name="journal_lines"
     )
     debit_credit = models.CharField(max_length=1, choices=DC.choices)
+    # SAP Posting Key: 40 = G/L debit, 50 = G/L credit, 01 = customer, 31 = vendor, ...
+    posting_key = models.CharField(max_length=2, blank=True)
     amount = models.DecimalField(max_digits=18, decimal_places=2)
-    line_text = models.CharField(max_length=255, blank=True)
-    # Universal Journal dimensions (expanded per phase):
+    line_text = models.CharField(max_length=255, blank=True)      # Item Text (Segmenttext)
+    assignment = models.CharField(max_length=18, blank=True)       # Assignment (Zuordnung)
+    # Universal Journal dimensions:
     cost_center = models.ForeignKey(
         "co.CostCenter", null=True, blank=True, on_delete=models.SET_NULL, related_name="journal_lines",
     )
     profit_center = models.ForeignKey(
         "co.ProfitCenter", null=True, blank=True, on_delete=models.SET_NULL, related_name="journal_lines",
     )
-    # (future: segment, partner, tax_code ...)
+    business_area = models.CharField(max_length=8, blank=True)     # Business Area (Geschäftsbereich)
+    segment = models.CharField(max_length=16, blank=True)          # Segment
 
     class Meta:
         db_table = "fin_journal_line"
         ordering = ["journal_entry", "line_number"]
         unique_together = [("journal_entry", "line_number")]
+
+    def save(self, *args, **kwargs):
+        # Default SAP posting key for G/L lines: 40 (debit) / 50 (credit).
+        # Subledger lines (customer 01 / vendor 31) set it explicitly in their service.
+        if not self.posting_key:
+            self.posting_key = "40" if self.debit_credit == self.DC.DEBIT else "50"
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.line_number}: {self.gl_account.account_number} {self.debit_credit} {self.amount}"

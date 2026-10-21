@@ -1,7 +1,7 @@
 // Typed Accounts Receivable API client.
 
 export interface Archivable { is_archived: boolean; archived_at: string | null; is_system: boolean; }
-export interface Customer extends Archivable { id: string; code: string; name: string; gstin: string; state: string; email: string; receivable_account: string | null; }
+export interface Customer extends Archivable { id: string; code: string; name: string; gstin: string; state: string; email: string; payment_terms: string; receivable_account: string | null; }
 export interface Item extends Archivable { id: string; code: string; name: string; hsn: string; unit_price: string; tax_slab: string | null; tax_slab_name: string | null; revenue_account: string | null; }
 export interface LineTax { id: string; component: string; component_code: string; percentage: string; amount: string; }
 export interface InvoiceLine {
@@ -13,7 +13,8 @@ export type InvoiceStatus = "draft" | "posted" | "cancelled";
 export type Settlement = "unposted" | "open" | "partial" | "paid";
 export interface CustomerInvoice {
   id: string; company_code: string; customer: string; customer_name: string;
-  invoice_number: string; invoice_date: string; due_date: string | null;
+  invoice_number: string; invoice_date: string; baseline_date: string | null;
+  due_date: string | null; payment_terms: string;
   currency: string; notes: string; status: InvoiceStatus;
   subtotal: string; tax_total: string; grand_total: string;
   paid_amount: string; outstanding: string; settlement_status: Settlement;
@@ -25,7 +26,8 @@ export interface AgingRow { party_id: string; party: string; current: string; b1
 export interface Aging { as_of: string; labels: Record<string, string>; rows: AgingRow[]; totals: Record<string, string>; }
 export interface NewInvoice {
   company_code: string; customer: string; invoice_date: string;
-  due_date?: string | null; notes?: string; lines: InvoiceLine[];
+  baseline_date?: string | null; due_date?: string | null;
+  payment_terms?: string; notes?: string; lines: InvoiceLine[];
 }
 
 type Fetcher = (path: string, init?: RequestInit) => Promise<Response>;

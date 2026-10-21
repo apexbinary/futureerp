@@ -8,8 +8,8 @@ ARCHIVE_FIELDS = ["is_archived", "archived_at", "is_system"]
 class VendorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vendor
-        fields = ["id", "code", "name", "gstin", "state", "email", "payable_account",
-                  "created_at", *ARCHIVE_FIELDS]
+        fields = ["id", "code", "name", "gstin", "state", "email", "payment_terms",
+                  "payable_account", "created_at", *ARCHIVE_FIELDS]
         read_only_fields = ["id", "created_at", "archived_at", "is_system"]
 
 
@@ -49,7 +49,8 @@ class VendorBillSerializer(serializers.ModelSerializer):
     class Meta:
         model = VendorBill
         fields = ["id", "company_code", "vendor", "vendor_name", "bill_number", "vendor_ref",
-                  "bill_date", "due_date", "currency", "notes", "status",
+                  "bill_date", "baseline_date", "due_date", "payment_terms",
+                  "currency", "notes", "status",
                   "subtotal", "tax_total", "grand_total", "paid_amount", "outstanding",
                   "settlement_status", "journal_entry", "journal_document",
                   "lines", "created_at", "posted_at", *ARCHIVE_FIELDS]
@@ -66,6 +67,10 @@ class VendorBillSerializer(serializers.ModelSerializer):
     def create(self, validated):
         lines = validated.pop("lines")
         tenant = self.context["request"].user.tenant
+        if not validated.get("baseline_date"):
+            validated["baseline_date"] = validated.get("bill_date")
+        if not validated.get("payment_terms") and validated.get("vendor"):
+            validated["payment_terms"] = validated["vendor"].payment_terms
         bill = VendorBill.objects.create(tenant=tenant, **validated)
         for idx, ln in enumerate(lines, start=1):
             VendorBillLine.objects.create(

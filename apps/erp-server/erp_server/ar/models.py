@@ -30,6 +30,7 @@ class Customer(ArchivableModel):
     gstin = models.CharField(max_length=20, blank=True)
     state = models.CharField(max_length=64, blank=True)   # place of supply
     email = models.EmailField(blank=True)
+    payment_terms = models.CharField(max_length=32, blank=True)   # default terms, e.g. "Net 30"
     # Override the default AR reconciliation account (else the company's 110000).
     receivable_account = models.ForeignKey(
         "finance.GLAccount", null=True, blank=True, on_delete=models.SET_NULL, related_name="ar_customers",
@@ -84,7 +85,9 @@ class CustomerInvoice(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name="invoices")
     invoice_number = models.CharField(max_length=20, blank=True)
     invoice_date = models.DateField()
+    baseline_date = models.DateField(null=True, blank=True)   # SAP: baseline date for due/aging
     due_date = models.DateField(null=True, blank=True)
+    payment_terms = models.CharField(max_length=32, blank=True)   # e.g. "Net 30"
     currency = models.CharField(max_length=3, default="INR")
     notes = models.CharField(max_length=255, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)

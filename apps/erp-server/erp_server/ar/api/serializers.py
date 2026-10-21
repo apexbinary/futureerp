@@ -15,8 +15,8 @@ ARCHIVE_FIELDS = ["is_archived", "archived_at", "is_system"]
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ["id", "code", "name", "gstin", "state", "email", "receivable_account",
-                  "created_at", *ARCHIVE_FIELDS]
+        fields = ["id", "code", "name", "gstin", "state", "email", "payment_terms",
+                  "receivable_account", "created_at", *ARCHIVE_FIELDS]
         read_only_fields = ["id", "created_at", "archived_at", "is_system"]
 
 
@@ -66,7 +66,8 @@ class CustomerInvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomerInvoice
         fields = ["id", "company_code", "customer", "customer_name", "invoice_number",
-                  "invoice_date", "due_date", "currency", "notes", "status",
+                  "invoice_date", "baseline_date", "due_date", "payment_terms",
+                  "currency", "notes", "status",
                   "subtotal", "tax_total", "grand_total", "paid_amount", "outstanding",
                   "settlement_status", "journal_entry", "journal_document",
                   "lines", "created_at", "posted_at"]
@@ -82,6 +83,12 @@ class CustomerInvoiceSerializer(serializers.ModelSerializer):
     def create(self, validated):
         lines = validated.pop("lines")
         tenant = self.context["request"].user.tenant
+        # SAP defaults: baseline date from invoice date; payment terms from the customer.
+        validated.setdefault("baseline_date", validated.get("invoice_date"))
+        if not validated.get("baseline_date"):
+            validated["baseline_date"] = validated.get("invoice_date")
+        if not validated.get("payment_terms") and validated.get("customer"):
+            validated["payment_terms"] = validated["customer"].payment_terms
         inv = CustomerInvoice.objects.create(tenant=tenant, **validated)
         for idx, ln in enumerate(lines, start=1):
             CustomerInvoiceLine.objects.create(

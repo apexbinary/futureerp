@@ -56,6 +56,8 @@ def run_depreciation(tenant, company_code: CompanyCode, period_date: date) -> di
             tenant=tenant, company_code=company_code, document_type=JournalEntry.DocumentType.GENERAL,
             posting_date=period_date, document_date=period_date, currency="INR",
             header_text=f"Depreciation {period} · {asset.name}",
+            source_type=JournalEntry.SourceType.DEPRECIATION,
+            source_id=asset.id, source_number=asset.code,
         )
         JournalEntryLine.objects.create(tenant=tenant, journal_entry=je, line_number=1, gl_account=exp,
                                         debit_credit=JournalEntryLine.DC.DEBIT, amount=amount, line_text="Depreciation")

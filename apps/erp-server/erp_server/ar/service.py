@@ -74,6 +74,10 @@ def post_invoice(invoice: CustomerInvoice) -> CustomerInvoice:
     if not receivable_acct:
         raise InvoiceError("No Trade Receivables account configured.")
 
+    # Number the invoice up-front so the G/L document can carry it as its source reference.
+    if not invoice.invoice_number:
+        invoice.invoice_number = _next_invoice_number(tenant, cc)
+
     # Clear any prior tax snapshot (re-post safety).
     CustomerInvoiceLineTax.objects.filter(line__invoice=invoice).delete()
 
@@ -103,11 +107,17 @@ def post_invoice(invoice: CustomerInvoice) -> CustomerInvoice:
         tenant=tenant, company_code=cc, document_type=JournalEntry.DocumentType.CUSTOMER_INVOICE,
         posting_date=invoice.invoice_date, document_date=invoice.invoice_date,
         currency=invoice.currency, header_text=f"Customer invoice · {invoice.customer.name}",
+        source_type=JournalEntry.SourceType.AR_INVOICE,
+        source_id=invoice.id, source_number=invoice.invoice_number,
+        party_type=JournalEntry.PartyType.CUSTOMER,
+        party_code=invoice.customer.code, party_name=invoice.customer.name,
     )
     n = 1
     JournalEntryLine.objects.create(
         tenant=tenant, journal_entry=je, line_number=n, gl_account=receivable_acct,
         debit_credit=JournalEntryLine.DC.DEBIT, amount=receivable_total,
+        posting_key="01",  # SAP: customer invoice (debit)
+        assignment=invoice.customer.code,
         line_text=f"Receivable · {invoice.customer.name}",
     )
     for acct_id, amt in revenue_by_acct.items():
@@ -125,7 +135,6 @@ def post_invoice(invoice: CustomerInvoice) -> CustomerInvoice:
 
     je = post_journal_entry(je)   # enforces debits == credits
 
-    invoice.invoice_number = _next_invoice_number(tenant, cc)
     invoice.journal_entry = je
     invoice.status = CustomerInvoice.Status.POSTED
     invoice.posted_at = datetime.now(timezone.utc)

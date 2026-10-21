@@ -5,6 +5,15 @@ export type Statement = "balance_sheet" | "profit_loss";
 export type DC = "D" | "C";
 export type DocStatus = "draft" | "posted" | "reversed";
 export type DocType = "SA" | "KR" | "DR" | "AB";
+export type SourceType =
+  | "manual" | "ar_invoice" | "ap_bill" | "ar_receipt" | "ap_payment" | "depreciation" | "reversal";
+export type PartyType = "" | "customer" | "vendor" | "bank";
+
+export const SOURCE_LABEL: Record<SourceType, string> = {
+  manual: "Manual entry", ar_invoice: "Customer invoice", ap_bill: "Vendor invoice",
+  ar_receipt: "Customer receipt", ap_payment: "Vendor payment",
+  depreciation: "Depreciation", reversal: "Reversal",
+};
 
 export interface Archivable { is_archived: boolean; archived_at: string | null; is_system: boolean; }
 
@@ -53,10 +62,14 @@ export interface JournalLine {
   account_number?: string;
   account_name?: string;
   debit_credit: DC;
+  posting_key?: string;
   amount: string;
   line_text?: string;
+  assignment?: string;
   cost_center?: string | null;
   profit_center?: string | null;
+  business_area?: string;
+  segment?: string;
 }
 
 export interface JournalEntry {
@@ -73,12 +86,29 @@ export interface JournalEntry {
   header_text: string;
   status: DocStatus;
   reverses: string | null;
+  source_type: SourceType;
+  source_id: string | null;
+  source_number: string;
+  party_type: PartyType;
+  party_code: string;
+  party_name: string;
   total_debit: string;
   total_credit: string;
   is_balanced: boolean;
   lines: JournalLine[];
   created_at: string;
   posted_at: string | null;
+}
+
+export interface JournalFilter {
+  status?: DocStatus;
+  source_type?: SourceType;
+  party_type?: Exclude<PartyType, "">;
+  party_code?: string;
+  document_type?: DocType;
+  from?: string;
+  to?: string;
+  q?: string;
 }
 
 export interface NewJournalEntry {
@@ -134,8 +164,12 @@ export function financeApi(authFetch: Fetcher) {
     fiscalYears: () => authFetch("/api/finance/fiscal-years/").then(j<FiscalYear[]>),
     createFiscalYear: (body: Partial<FiscalYear>) => send("/api/finance/fiscal-years/", body).then(j<FiscalYear>),
     glAccounts: () => authFetch("/api/finance/gl-accounts/").then(j<GLAccount[]>),
-    journalEntries: (status?: DocStatus) =>
-      authFetch(`/api/finance/journal-entries/${status ? `?status=${status}` : ""}`).then(j<JournalEntry[]>),
+    journalEntries: (filter: JournalFilter = {}) => {
+      const qs = new URLSearchParams(
+        Object.entries(filter).filter(([, v]) => v != null && v !== "") as [string, string][],
+      ).toString();
+      return authFetch(`/api/finance/journal-entries/${qs ? `?${qs}` : ""}`).then(j<JournalEntry[]>);
+    },
     getJournalEntry: (id: string) =>
       authFetch(`/api/finance/journal-entries/${id}/`).then(j<JournalEntry>),
     createJournalEntry: (body: NewJournalEntry) =>

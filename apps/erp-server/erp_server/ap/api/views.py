@@ -70,6 +70,6 @@ class VendorBillViewSet(ArchiveViewSetMixin, _TenantScoped):
         qs = self.get_queryset().filter(status=VendorBill.Status.POSTED)
         entries = [{
             "party_id": str(b.vendor_id), "party_name": b.vendor.name,
-            "due_date": b.due_date or b.bill_date, "outstanding": b.outstanding,
+            "due_date": b.due_date or b.baseline_date or b.bill_date, "outstanding": b.outstanding,
         } for b in qs if b.outstanding > 0]
         return Response(build_aging(entries, date.today()))

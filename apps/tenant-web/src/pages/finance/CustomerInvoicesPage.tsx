@@ -36,6 +36,10 @@ export function CustomerInvoicesPage() {
   // compose
   const [customer, setCustomer] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(today());
+  const [baselineDate, setBaselineDate] = useState(today());
+  const [dueDate, setDueDate] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState("");
+  const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<DraftLine[]>([emptyLine()]);
 
   const reload = () => api.invoices().then(setInvoices).catch((e) => toast(e.message));
@@ -72,7 +76,17 @@ export function CustomerInvoicesPage() {
   };
 
   const openNew = () => {
-    setCustomer(customers[0]?.id ?? ""); setInvoiceDate(today()); setLines([emptyLine()]); setMode("new");
+    const first = customers[0];
+    setCustomer(first?.id ?? ""); setInvoiceDate(today()); setBaselineDate(today());
+    setDueDate(""); setPaymentTerms(first?.payment_terms ?? ""); setNotes("");
+    setLines([emptyLine()]); setMode("new");
+  };
+
+  // When the customer changes, default payment terms from their master record.
+  const pickCustomer = (id: string) => {
+    setCustomer(id);
+    const c = customers.find((x) => x.id === id);
+    if (c && !paymentTerms) setPaymentTerms(c.payment_terms ?? "");
   };
 
   const save = async (thenPost: boolean) => {
@@ -85,6 +99,8 @@ export function CustomerInvoicesPage() {
     try {
       const created = await api.createInvoice({
         company_code: cc, customer, invoice_date: invoiceDate,
+        baseline_date: baselineDate || null, due_date: dueDate || null,
+        payment_terms: paymentTerms, notes,
         lines: valid.map((l, idx) => ({
           line_number: idx + 1, item: l.item, quantity: l.quantity, unit_price: l.unit_price,
         }) as InvoiceLine),
@@ -185,14 +201,32 @@ export function CustomerInvoicesPage() {
           <>
             <label className={f.docField} style={{ marginBottom: 12 }}>
               <span className={f.docK}>Customer</span>
-              <select className={f.sel} value={customer} onChange={(e) => setCustomer(e.target.value)}>
+              <select className={f.sel} value={customer} onChange={(e) => pickCustomer(e.target.value)}>
                 <option value="">Select…</option>
                 {customers.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.state}</option>)}
               </select>
             </label>
+            <div className={f.docGrid}>
+              <label className={f.docField}>
+                <span className={f.docK}>Invoice date</span>
+                <input type="date" className={f.inp} value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+              </label>
+              <label className={f.docField}>
+                <span className={f.docK}>Baseline date</span>
+                <input type="date" className={f.inp} value={baselineDate} onChange={(e) => setBaselineDate(e.target.value)} title="Date from which payment terms are counted" />
+              </label>
+              <label className={f.docField}>
+                <span className={f.docK}>Payment terms</span>
+                <input className={f.inp} placeholder="e.g. Net 30" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
+              </label>
+              <label className={f.docField}>
+                <span className={f.docK}>Due date</span>
+                <input type="date" className={f.inp} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              </label>
+            </div>
             <label className={f.docField} style={{ marginBottom: 16 }}>
-              <span className={f.docK}>Invoice date</span>
-              <input type="date" className={f.inp} value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+              <span className={f.docK}>Notes</span>
+              <input className={f.inp} placeholder="Optional reference / remarks" value={notes} onChange={(e) => setNotes(e.target.value)} />
             </label>
 
             <div className={f.lineHead} style={{ gridTemplateColumns: "1fr 64px 110px 110px 28px" }}>
@@ -247,8 +281,11 @@ function InvoiceView({ inv }: { inv: CustomerInvoice }) {
       <div className={f.docMeta}>
         <div className={f.docField}><span className={f.docK}>Status</span>
           <span className={f.docV}><Pill tone={statusTone[inv.status]} dot>{inv.status}</Pill></span></div>
-        <div className={f.docField}><span className={f.docK}>Invoice date</span><span className={f.docV}>{inv.invoice_date}</span></div>
         <div className={f.docField}><span className={f.docK}>Customer</span><span className={f.docV}>{inv.customer_name}</span></div>
+        <div className={f.docField}><span className={f.docK}>Invoice date</span><span className={f.docV}>{inv.invoice_date}</span></div>
+        <div className={f.docField}><span className={f.docK}>Baseline date</span><span className={f.docV}>{inv.baseline_date ?? "—"}</span></div>
+        <div className={f.docField}><span className={f.docK}>Payment terms</span><span className={f.docV}>{inv.payment_terms || "—"}</span></div>
+        <div className={f.docField}><span className={f.docK}>Due date</span><span className={f.docV}>{inv.due_date ?? "—"}</span></div>
         <div className={f.docField}><span className={f.docK}>G/L document</span><span className={f.docV}>{inv.journal_document ?? "—"}</span></div>
       </div>
       <SectionHeader title="Lines" />

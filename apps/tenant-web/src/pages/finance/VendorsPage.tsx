@@ -30,7 +30,8 @@ export function VendorsPage() {
     { key: "name", label: "Name", placeholder: "Supplier Pvt. Ltd.", full: true },
     { key: "state", label: "State (place of supply)", placeholder: "Maharashtra" },
     { key: "gstin", label: "GSTIN", placeholder: "27AAFCM1111A1Z3" },
-    { key: "email", label: "Email", full: true },
+    { key: "email", label: "Email" },
+    { key: "payment_terms", label: "Payment terms", placeholder: "e.g. Net 30" },
     { key: "payable_account", label: "Payable account (optional — defaults to 200000)", type: "select", options: acctOpts, full: true },
   ];
 
@@ -47,7 +48,7 @@ export function VendorsPage() {
         title="Vendors" singular="Vendor"
         hint="The vendor's state decides whether a bill is intra-state (CGST+SGST) or inter-state (IGST)."
         resource={ap.vendorCrud} columns={columns} fields={fields}
-        makeDefault={() => ({ code: "", name: "", state: "", gstin: "", email: "", payable_account: null })}
+        makeDefault={() => ({ code: "", name: "", state: "", gstin: "", email: "", payment_terms: "", payable_account: null })}
       />
     </div>
   );

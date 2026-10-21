@@ -31,7 +31,8 @@ export function CustomersPage() {
     { key: "name", label: "Name", placeholder: "Acme Pvt. Ltd.", full: true },
     { key: "state", label: "State (place of supply)", placeholder: "Maharashtra" },
     { key: "gstin", label: "GSTIN", placeholder: "27AABCA1234A1Z5" },
-    { key: "email", label: "Email", placeholder: "accounts@acme.example", full: true },
+    { key: "email", label: "Email", placeholder: "accounts@acme.example" },
+    { key: "payment_terms", label: "Payment terms", placeholder: "e.g. Net 30" },
     { key: "receivable_account", label: "Receivable account (optional — defaults to 110000)", type: "select", options: acctOpts, full: true },
   ];
 
@@ -53,7 +54,7 @@ export function CustomersPage() {
         resource={ar.customerCrud}
         columns={columns}
         fields={fields}
-        makeDefault={() => ({ code: "", name: "", state: "", gstin: "", email: "", receivable_account: null })}
+        makeDefault={() => ({ code: "", name: "", state: "", gstin: "", email: "", payment_terms: "", receivable_account: null })}
       />
     </div>
   );

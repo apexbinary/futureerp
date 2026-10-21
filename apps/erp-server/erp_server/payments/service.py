@@ -54,24 +54,41 @@ def post_payment(p: Payment) -> Payment:
         recv = p.customer.receivable_account or _acct(tenant, coa, DEFAULT_RECEIVABLE)
         debit_acct, credit_acct = bank, recv        # Dr Bank, Cr Receivables
         head = f"Receipt · {p.customer.name}"
+        src_type = JournalEntry.SourceType.AR_RECEIPT
+        party_type, party_code, party_name = (
+            JournalEntry.PartyType.CUSTOMER, p.customer.code, p.customer.name)
+        # SAP posting keys: 40 Dr bank, 15 Cr customer (incoming payment).
+        debit_pk, credit_pk = "40", "15"
     else:
         if not p.vendor_id:
             raise PaymentError("Payment needs a vendor.")
         pay = p.vendor.payable_account or _acct(tenant, coa, DEFAULT_PAYABLE)
         debit_acct, credit_acct = pay, bank         # Dr Payables, Cr Bank
         head = f"Payment · {p.vendor.name}"
+        src_type = JournalEntry.SourceType.AP_PAYMENT
+        party_type, party_code, party_name = (
+            JournalEntry.PartyType.VENDOR, p.vendor.code, p.vendor.name)
+        # SAP posting keys: 25 Dr vendor (outgoing payment), 50 Cr bank.
+        debit_pk, credit_pk = "25", "50"
+
+    if not p.payment_number:
+        p.payment_number = _next_number(tenant, cc, p.direction)
 
     je = JournalEntry.objects.create(
         tenant=tenant, company_code=cc, document_type=JournalEntry.DocumentType.GENERAL,
         posting_date=p.payment_date, document_date=p.payment_date, currency="INR", header_text=head,
+        reference=p.reference or "",
+        source_type=src_type, source_id=p.id, source_number=p.payment_number,
+        party_type=party_type, party_code=party_code, party_name=party_name,
     )
     JournalEntryLine.objects.create(tenant=tenant, journal_entry=je, line_number=1, gl_account=debit_acct,
-                                    debit_credit=JournalEntryLine.DC.DEBIT, amount=p.amount, line_text=head)
+                                    debit_credit=JournalEntryLine.DC.DEBIT, posting_key=debit_pk,
+                                    amount=p.amount, line_text=head, assignment=party_code)
     JournalEntryLine.objects.create(tenant=tenant, journal_entry=je, line_number=2, gl_account=credit_acct,
-                                    debit_credit=JournalEntryLine.DC.CREDIT, amount=p.amount, line_text=head)
+                                    debit_credit=JournalEntryLine.DC.CREDIT, posting_key=credit_pk,
+                                    amount=p.amount, line_text=head, assignment=party_code)
     je = post_journal_entry(je)
 
-    p.payment_number = _next_number(tenant, cc, p.direction)
     p.journal_entry = je
     p.status = Payment.Status.POSTED
     p.posted_at = datetime.now(timezone.utc)

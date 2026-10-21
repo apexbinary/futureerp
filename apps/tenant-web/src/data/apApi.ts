@@ -1,7 +1,7 @@
 // Typed Accounts Payable API client.
 
 export interface Archivable { is_archived: boolean; archived_at: string | null; is_system: boolean; }
-export interface Vendor extends Archivable { id: string; code: string; name: string; gstin: string; state: string; email: string; payable_account: string | null; }
+export interface Vendor extends Archivable { id: string; code: string; name: string; gstin: string; state: string; email: string; payment_terms: string; payable_account: string | null; }
 export interface LineTax { id: string; component: string; component_code: string; percentage: string; amount: string; }
 export interface BillLine {
   id?: string; line_number?: number; description?: string; expense_account: string | null;
@@ -12,7 +12,8 @@ export type BillStatus = "draft" | "posted" | "cancelled";
 export type Settlement = "unposted" | "open" | "partial" | "paid";
 export interface VendorBill extends Archivable {
   id: string; company_code: string; vendor: string; vendor_name: string;
-  bill_number: string; vendor_ref: string; bill_date: string; due_date: string | null;
+  bill_number: string; vendor_ref: string; bill_date: string;
+  baseline_date: string | null; due_date: string | null; payment_terms: string;
   currency: string; notes: string; status: BillStatus;
   subtotal: string; tax_total: string; grand_total: string;
   paid_amount: string; outstanding: string; settlement_status: Settlement;
@@ -23,7 +24,9 @@ export interface VendorBill extends Archivable {
 export interface AgingRow { party_id: string; party: string; current: string; b1: string; b2: string; b3: string; b4: string; total: string; }
 export interface Aging { as_of: string; labels: Record<string, string>; rows: AgingRow[]; totals: Record<string, string>; }
 export interface NewBill {
-  company_code: string; vendor: string; bill_date: string; vendor_ref?: string; lines: BillLine[];
+  company_code: string; vendor: string; bill_date: string; vendor_ref?: string;
+  baseline_date?: string | null; due_date?: string | null;
+  payment_terms?: string; notes?: string; lines: BillLine[];
 }
 
 type Fetcher = (path: string, init?: RequestInit) => Promise<Response>;

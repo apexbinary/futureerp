@@ -73,10 +73,18 @@ def reverse_journal_entry(entry: JournalEntry, posting_date=None, created_by=Non
         reference=entry.document_number,
         header_text=f"Reversal of {entry.document_number}",
         status=JournalEntry.Status.DRAFT,
+        # Keep the reversal discoverable under the same business partner, but
+        # mark it a reversal pointing back at the original document.
+        source_type=JournalEntry.SourceType.REVERSAL,
+        source_id=entry.id,
+        source_number=entry.document_number,
+        party_type=entry.party_type,
+        party_code=entry.party_code,
+        party_name=entry.party_name,
         reverses=entry,
         created_by=created_by,
     )
-    # Mirror lines with flipped debit/credit.
+    # Mirror lines with flipped debit/credit, carrying all dimensions.
     flip = {
         JournalEntryLine.DC.DEBIT: JournalEntryLine.DC.CREDIT,
         JournalEntryLine.DC.CREDIT: JournalEntryLine.DC.DEBIT,
@@ -90,6 +98,11 @@ def reverse_journal_entry(entry: JournalEntry, posting_date=None, created_by=Non
             debit_credit=flip[ln.debit_credit],
             amount=ln.amount,
             line_text=f"Reversal: {ln.line_text}".strip(),
+            assignment=ln.assignment,
+            cost_center=ln.cost_center,
+            profit_center=ln.profit_center,
+            business_area=ln.business_area,
+            segment=ln.segment,
         )
 
     rev = post_journal_entry(rev)

@@ -35,7 +35,11 @@ export function VendorBillsPage() {
 
   const [vendor, setVendor] = useState("");
   const [billDate, setBillDate] = useState(today());
+  const [baselineDate, setBaselineDate] = useState(today());
+  const [dueDate, setDueDate] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState("");
   const [vendorRef, setVendorRef] = useState("");
+  const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<DraftLine[]>([emptyLine()]);
 
   const reload = () => ap.bills().then(setBills).catch((e) => toast(e.message));
@@ -61,7 +65,17 @@ export function VendorBillsPage() {
 
   const subtotal = lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unit_price) || 0), 0);
   const setLine = (i: number, patch: Partial<DraftLine>) => setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
-  const openNew = () => { setVendor(vendors[0]?.id ?? ""); setBillDate(today()); setVendorRef(""); setLines([emptyLine()]); setMode("new"); };
+  const openNew = () => {
+    const first = vendors[0];
+    setVendor(first?.id ?? ""); setBillDate(today()); setBaselineDate(today());
+    setDueDate(""); setPaymentTerms(first?.payment_terms ?? ""); setVendorRef(""); setNotes("");
+    setLines([emptyLine()]); setMode("new");
+  };
+  const pickVendor = (id: string) => {
+    setVendor(id);
+    const v = vendors.find((x) => x.id === id);
+    if (v && !paymentTerms) setPaymentTerms(v.payment_terms ?? "");
+  };
 
   const save = async (thenPost: boolean) => {
     if (!companyCode) return toast("Company code unavailable.");
@@ -72,6 +86,8 @@ export function VendorBillsPage() {
     try {
       const created = await ap.createBill({
         company_code: companyCode, vendor, bill_date: billDate, vendor_ref: vendorRef,
+        baseline_date: baselineDate || null, due_date: dueDate || null,
+        payment_terms: paymentTerms, notes,
         lines: valid.map((l, idx) => ({ line_number: idx + 1, description: l.description, expense_account: l.expense_account, quantity: l.quantity, unit_price: l.unit_price, tax_slab: l.tax_slab || null }) as BillLine),
       });
       if (thenPost) { const p = await ap.postBill(created.id); toast(`Posted ${p.bill_number} · G/L ${p.journal_document}`); setMode(p); }
@@ -127,16 +143,24 @@ export function VendorBillsPage() {
           <>
             <label className={f.docField} style={{ marginBottom: 12 }}>
               <span className={f.docK}>Vendor</span>
-              <select className={f.sel} value={vendor} onChange={(e) => setVendor(e.target.value)}>
+              <select className={f.sel} value={vendor} onChange={(e) => pickVendor(e.target.value)}>
                 <option value="">Select…</option>
                 {vendors.map((v) => <option key={v.id} value={v.id}>{v.name} · {v.state}</option>)}
               </select>
             </label>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+            <div className={f.docGrid}>
               <label className={f.docField}><span className={f.docK}>Bill date</span>
                 <input type="date" className={f.inp} value={billDate} onChange={(e) => setBillDate(e.target.value)} /></label>
               <label className={f.docField}><span className={f.docK}>Vendor ref</span>
                 <input className={f.inp} placeholder="their invoice #" value={vendorRef} onChange={(e) => setVendorRef(e.target.value)} /></label>
+              <label className={f.docField}><span className={f.docK}>Baseline date</span>
+                <input type="date" className={f.inp} value={baselineDate} onChange={(e) => setBaselineDate(e.target.value)} title="Date from which payment terms are counted" /></label>
+              <label className={f.docField}><span className={f.docK}>Payment terms</span>
+                <input className={f.inp} placeholder="e.g. Net 30" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} /></label>
+              <label className={f.docField}><span className={f.docK}>Due date</span>
+                <input type="date" className={f.inp} value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></label>
+              <label className={f.docField}><span className={f.docK}>Notes</span>
+                <input className={f.inp} placeholder="Optional remarks" value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
             </div>
 
             <div className={f.lineHead} style={{ gridTemplateColumns: "1.3fr 70px 100px 100px 28px" }}>
@@ -181,8 +205,12 @@ function BillView({ bill }: { bill: VendorBill }) {
     <>
       <div className={f.docMeta}>
         <div className={f.docField}><span className={f.docK}>Status</span><span className={f.docV}><Pill tone={statusTone[bill.status]} dot>{bill.status}</Pill></span></div>
-        <div className={f.docField}><span className={f.docK}>Bill date</span><span className={f.docV}>{bill.bill_date}</span></div>
         <div className={f.docField}><span className={f.docK}>Vendor</span><span className={f.docV}>{bill.vendor_name}</span></div>
+        <div className={f.docField}><span className={f.docK}>Bill date</span><span className={f.docV}>{bill.bill_date}</span></div>
+        <div className={f.docField}><span className={f.docK}>Baseline date</span><span className={f.docV}>{bill.baseline_date ?? "—"}</span></div>
+        <div className={f.docField}><span className={f.docK}>Payment terms</span><span className={f.docV}>{bill.payment_terms || "—"}</span></div>
+        <div className={f.docField}><span className={f.docK}>Due date</span><span className={f.docV}>{bill.due_date ?? "—"}</span></div>
+        {bill.vendor_ref && <div className={f.docField}><span className={f.docK}>Vendor ref</span><span className={f.docV}>{bill.vendor_ref}</span></div>}
         <div className={f.docField}><span className={f.docK}>G/L document</span><span className={f.docV}>{bill.journal_document ?? "—"}</span></div>
       </div>
       <SectionHeader title="Lines" />
