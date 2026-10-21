@@ -26,7 +26,7 @@ export const sections: NavSection[] = [
       { label: "Fixed Assets", path: "/finance/assets", icon: Boxes },
       { label: "Cost Centers", path: "/finance/cost-centers", icon: Layers },
       { label: "Profit Centers", path: "/finance/profit-centers", icon: TrendingUp },
-      { label: "Journal Entries", path: "/finance/journal", icon: BookOpen },
+      { label: "Accounting Documents", path: "/finance/journal", icon: BookOpen },
       { label: "Tax", path: "/finance/tax", icon: Receipt },
       { label: "Organization", path: "/finance/organization", icon: Settings },
       { label: "Reports", path: "/finance/reports", icon: BarChart3 },

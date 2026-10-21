@@ -91,7 +91,7 @@ export function CustomerInvoicesPage() {
 
   const save = async (thenPost: boolean) => {
     const cc = companyCode || invoices[0]?.company_code;
-    if (!cc) return toast("Company code unavailable — create a journal entry first to initialise.");
+    if (!cc) return toast("Company code unavailable — create an accounting document first to initialise.");
     if (!customer) return toast("Pick a customer.");
     const valid = lines.filter((l) => l.item && Number(l.quantity) > 0);
     if (!valid.length) return toast("Add at least one line.");

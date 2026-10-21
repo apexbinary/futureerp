@@ -35,13 +35,13 @@ export function ProfitCentersPage() {
     <div className={page.inner}>
       <div className={page.breadcrumb}><span>Finance</span><span className={page.sep}>›</span><span>Profit Centers</span></div>
       <div className={page.head}>
-        <div><h1>Profit Centers</h1><p>Controlling · tag journal lines with a profit center to track where profit is earned</p></div>
+        <div><h1>Profit Centers</h1><p>Controlling · tag document lines with a profit center to track where profit is earned</p></div>
       </div>
 
       <SectionHeader title="Profit center master" />
       <EntityManager<ProfitCenter>
         title="Profit centers" singular="Profit center"
-        hint="Create profit centers, then select them on journal entry lines."
+        hint="Create profit centers, then select them on accounting-document lines."
         resource={api.profitCenters} columns={columns} fields={fields}
         makeDefault={() => ({ code: "", name: "", manager: "" })}
       />

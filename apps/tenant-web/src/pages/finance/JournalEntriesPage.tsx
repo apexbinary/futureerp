@@ -212,15 +212,15 @@ export function JournalEntriesPage() {
   return (
     <div className={page.inner}>
       <div className={page.breadcrumb}>
-        <span>Finance</span><span className={page.sep}>›</span><span>Journal Entries</span>
+        <span>Finance</span><span className={page.sep}>›</span><span>Accounting Documents</span>
       </div>
       <div className={page.head}>
         <div>
-          <h1>Journal Entries</h1>
+          <h1>Accounting Documents</h1>
           <p>General Ledger · every posting is a balanced document</p>
         </div>
         <div className={page.actions}>
-          <Button variant="primary" onClick={openNew}><Plus />New entry</Button>
+          <Button variant="primary" onClick={openNew}><Plus />New document</Button>
         </div>
       </div>
 
@@ -254,7 +254,7 @@ export function JournalEntriesPage() {
         rows={rows}
         getRowId={(e) => e.id}
         onRowClick={(e) => setMode(e)}
-        empty={loading ? "Loading…" : "No journal entries yet."}
+        empty={loading ? "Loading…" : "No accounting documents yet."}
       />
 
       {/* Compose / view drawer */}
@@ -262,7 +262,7 @@ export function JournalEntriesPage() {
         open={mode !== null}
         onClose={() => setMode(null)}
         size="lg"
-        title={viewing ? (viewing.document_number || "Draft document") : "New journal entry"}
+        title={viewing ? (viewing.document_number || "Draft document") : "New accounting document"}
         subtitle={viewing ? `${viewing.company_code_code} · ${viewing.document_type}` : "General Ledger posting"}
         footer={
           viewing ? (

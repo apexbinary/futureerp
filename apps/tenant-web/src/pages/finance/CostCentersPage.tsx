@@ -35,13 +35,13 @@ export function CostCentersPage() {
     <div className={page.inner}>
       <div className={page.breadcrumb}><span>Finance</span><span className={page.sep}>›</span><span>Cost Centers</span></div>
       <div className={page.head}>
-        <div><h1>Cost Centers</h1><p>Controlling · tag journal lines with a cost center to track where money is spent</p></div>
+        <div><h1>Cost Centers</h1><p>Controlling · tag document lines with a cost center to track where money is spent</p></div>
       </div>
 
       <SectionHeader title="Cost center master" />
       <EntityManager<CostCenter>
         title="Cost centers" singular="Cost center"
-        hint="Create cost centers, then select them on journal entry lines. Spend rolls up in the report below."
+        hint="Create cost centers, then select them on accounting-document lines. Spend rolls up in the report below."
         resource={api.costCenters} columns={columns} fields={fields}
         makeDefault={() => ({ code: "", name: "", manager: "" })}
       />
