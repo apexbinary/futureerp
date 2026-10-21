@@ -28,7 +28,10 @@ services:
     ports:
       - "${POSTGRES_HOST_PORT:-5433}:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # Postgres 18 stores data under /var/lib/postgresql (PGDATA =
+      # /var/lib/postgresql/18/docker) and declares its VOLUME there — NOT at
+      # /var/lib/postgresql/data as in PG <= 17. Mount the parent accordingly.
+      - pgdata:/var/lib/postgresql
       # Runs once, only when the data directory is empty.
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
