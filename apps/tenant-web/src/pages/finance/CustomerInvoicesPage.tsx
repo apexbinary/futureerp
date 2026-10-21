@@ -140,7 +140,7 @@ export function CustomerInvoicesPage() {
       render: (i) => <span className="tnum">{money(i.grand_total)}</span> },
     { key: "outstanding", header: "Outstanding", numeric: true, width: 120,
       render: (i) => <span className="tnum" style={{ color: Number(i.outstanding) > 0 ? "var(--danger)" : "var(--text-faint)" }}>{money(i.outstanding)}</span> },
-    { key: "settlement_status", header: "Settlement", width: 110,
+    { key: "settlement_status", header: "Clearing", width: 110,
       render: (i) => (i.status === "posted" ? <Pill tone={settleTone[i.settlement_status]} dot>{i.settlement_status}</Pill> : <Pill tone="neutral">{i.status}</Pill>) },
   ];
 

@@ -144,7 +144,7 @@ export function PaymentsPage() {
 
         {party && openDocs.length > 0 && (
           <div style={{ marginBottom: 12 }}>
-            <span className={f.docK}>Allocate to open {direction === "receipt" ? "invoices" : "bills"} (optional — leave blank for on-account)</span>
+            <span className={f.docK}>Allocate to open {direction === "receipt" ? "customer invoices" : "vendor invoices"} (optional — leave blank for on-account)</span>
             <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden", marginTop: 6 }}>
               {openDocs.map((d, idx) => (
                 <div key={d.id} style={{ display: "grid", gridTemplateColumns: "1fr 96px 92px", gap: 8, alignItems: "center", padding: "7px 10px", borderBottom: idx < openDocs.length - 1 ? "1px solid var(--border)" : "0" }}>

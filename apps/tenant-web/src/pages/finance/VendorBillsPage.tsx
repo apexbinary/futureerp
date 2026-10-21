@@ -103,35 +103,35 @@ export function VendorBillsPage() {
 
   const settleTone: Record<string, PillTone> = { paid: "success", partial: "warning", open: "danger", unposted: "neutral" };
   const columns: Column<VendorBill>[] = [
-    { key: "bill_number", header: "Bill", mono: true, width: 120, render: (b) => <span className="mono" style={{ fontWeight: 600 }}>{b.bill_number || "—"}</span> },
+    { key: "bill_number", header: "Invoice", mono: true, width: 120, render: (b) => <span className="mono" style={{ fontWeight: 600 }}>{b.bill_number || "—"}</span> },
     { key: "vendor_name", header: "Vendor" },
     { key: "bill_date", header: "Date", width: 110, emphasis: "secondary" },
     { key: "grand_total", header: "Total", numeric: true, width: 120, render: (b) => <span className="tnum">{money(b.grand_total)}</span> },
     { key: "outstanding", header: "Outstanding", numeric: true, width: 120, render: (b) => <span className="tnum" style={{ color: Number(b.outstanding) > 0 ? "var(--danger)" : "var(--text-faint)" }}>{money(b.outstanding)}</span> },
-    { key: "settlement_status", header: "Settlement", width: 110, render: (b) => (b.status === "posted" ? <Pill tone={settleTone[b.settlement_status]} dot>{b.settlement_status}</Pill> : <Pill tone="neutral">{b.status}</Pill>) },
+    { key: "settlement_status", header: "Clearing", width: 110, render: (b) => (b.status === "posted" ? <Pill tone={settleTone[b.settlement_status]} dot>{b.settlement_status}</Pill> : <Pill tone="neutral">{b.status}</Pill>) },
   ];
   const viewing = mode && mode !== "new" ? (mode as VendorBill) : null;
 
   return (
     <div className={page.inner}>
-      <div className={page.breadcrumb}><span>Finance</span><span className={page.sep}>›</span><span>Vendor Bills (AP)</span></div>
+      <div className={page.breadcrumb}><span>Finance</span><span className={page.sep}>›</span><span>Vendor Invoices (AP)</span></div>
       <div className={page.head}>
-        <div><h1>Vendor Bills</h1><p>Accounts Payable · input tax auto-computed, posts to the General Ledger</p></div>
-        <div className={page.actions}><Button variant="primary" onClick={openNew}><Plus />New bill</Button></div>
+        <div><h1>Vendor Invoices</h1><p>Accounts Payable · input tax auto-computed, posts to the General Ledger</p></div>
+        <div className={page.actions}><Button variant="primary" onClick={openNew}><Plus />New invoice</Button></div>
       </div>
 
       <div className={page.toolbar}>
         <div style={{ flex: 1, minWidth: 0 }}><Tabs tabs={tabs} active={filter} onChange={(k) => setFilter(k as BillStatus | "all")} /></div>
       </div>
-      <SectionHeader title="Bills" right={loading ? "Loading…" : `${rows.length} shown`} />
-      <DataTable columns={columns} rows={rows} getRowId={(b) => b.id} onRowClick={(b) => setMode(b)} empty={loading ? "Loading…" : "No bills yet."} />
+      <SectionHeader title="Invoices" right={loading ? "Loading…" : `${rows.length} shown`} />
+      <DataTable columns={columns} rows={rows} getRowId={(b) => b.id} onRowClick={(b) => setMode(b)} empty={loading ? "Loading…" : "No vendor invoices yet."} />
 
       <Drawer open={mode !== null} onClose={() => setMode(null)}
-        title={viewing ? (viewing.bill_number || "Draft bill") : "New vendor bill"}
+        title={viewing ? (viewing.bill_number || "Draft invoice") : "New vendor invoice"}
         subtitle={viewing ? viewing.vendor_name : "Accounts Payable"}
         footer={viewing ? (
           viewing.status === "draft"
-            ? <Button variant="primary" style={{ flex: 1 }} disabled={busy} onClick={() => postExisting(viewing)}><Check size={16} />Post bill</Button>
+            ? <Button variant="primary" style={{ flex: 1 }} disabled={busy} onClick={() => postExisting(viewing)}><Check size={16} />Post invoice</Button>
             : <span style={{ color: "var(--text-faint)", fontSize: 12 }}>Posted · G/L {viewing.journal_document}</span>
         ) : (
           <>

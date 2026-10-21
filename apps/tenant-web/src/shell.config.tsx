@@ -20,7 +20,7 @@ export const sections: NavSection[] = [
       { label: "Items", path: "/finance/items", icon: Package },
       { label: "Chart of Accounts", path: "/finance/accounts", icon: ListTree },
       { label: "Vendors", path: "/finance/vendors", icon: Building2 },
-      { label: "Vendor Bills", path: "/finance/bills", icon: ShoppingBag },
+      { label: "Vendor Invoices", path: "/finance/bills", icon: ShoppingBag },
       { label: "Payments", path: "/finance/payments", icon: CreditCard },
       { label: "Aging", path: "/finance/aging", icon: CalendarDays },
       { label: "Fixed Assets", path: "/finance/assets", icon: Boxes },
