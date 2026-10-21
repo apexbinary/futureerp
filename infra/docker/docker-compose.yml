@@ -1,0 +1,42 @@
+# FUTURE_ERP — local development infrastructure.
+#
+# Brings up the PostgreSQL instance the backends expect. One Postgres server
+# hosts all three service databases (control_plane, erp_server, future_erp);
+# they are created on first boot by ./postgres/init/01-create-databases.sql.
+#
+# Usage (from this directory):
+#   docker compose up -d        # start in the background
+#   docker compose ps           # check status / health
+#   docker compose logs -f db   # tail logs
+#   docker compose down         # stop (data is kept in the named volume)
+#   docker compose down -v      # stop AND delete all data
+#
+# Host port 5433 is used deliberately: a machine-local PostgreSQL often already
+# occupies 5432. Override any value via the environment or an .env file in this
+# directory (see .env.example).
+
+services:
+  db:
+    image: postgres:18
+    container_name: future-erp-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-erp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-erp}
+      # The first database Postgres creates; the init script adds the rest.
+      POSTGRES_DB: ${POSTGRES_DB:-future_erp}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Runs once, only when the data directory is empty.
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-erp} -d ${POSTGRES_DB:-future_erp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+    name: future-erp-pgdata
