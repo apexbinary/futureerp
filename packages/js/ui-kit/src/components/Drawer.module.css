@@ -36,7 +36,7 @@
 .sub { color: var(--text-muted); font-size: 12.5px; margin-top: 2px; }
 .close { margin-left: auto; width: 32px; height: 32px; border-radius: var(--r-md); border: 1px solid transparent; background: transparent; color: var(--text-muted); display: grid; place-items: center; transition: background .14s, color .14s; }
 .close:hover { background: var(--surface-2); color: var(--text); }
-.body { padding: 22px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; flex: 1; }
+.body { padding: 22px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; flex: 1; min-height: 0; }
 .foot { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 9px; }
 .fieldGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .field { display: flex; flex-direction: column; gap: 3px; }

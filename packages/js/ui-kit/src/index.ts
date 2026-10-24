@@ -11,6 +11,7 @@ export { useOptions, type Option } from "./useOptions";
 export { Button } from "./components/Button";
 export { Pill, type PillTone } from "./components/Pill";
 export { Drawer, Field, FieldGrid, Chips, Chip } from "./components/Drawer";
+export { ConfirmDialog } from "./components/ConfirmDialog";
 export { LoginScreen } from "./components/LoginScreen";
 export { Toggle } from "./components/Toggle";
 export { DateRangeFilter, type DateRange } from "./components/DateRangeFilter";

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, Check, CheckCircle2, AlertTriangle, RotateCcw, Search, Link2 } from "lucide-react";
 import {
   Button, Pill, type PillTone, Drawer, Tabs, SectionHeader, DataTable, type Column, useToast,
-  fmtMoney, useAuth,
+  fmtMoney, useAuth, ConfirmDialog,
 } from "@future-erp/ui-kit";
 import { coApi, type CostCenter, type ProfitCenter } from "../../data/coApi";
 import { useFinance } from "./useFinance";
@@ -81,6 +81,7 @@ export function JournalEntriesPage() {
   const [documentDate, setDocumentDate] = useState(today());
   const [lines, setLines] = useState<Draft[]>([emptyLine(), emptyLine()]);
   const [busy, setBusy] = useState(false);
+  const [confirmReverse, setConfirmReverse] = useState(false);
 
   const reload = () =>
     api.journalEntries({
@@ -271,7 +272,7 @@ export function JournalEntriesPage() {
                 <Check size={16} />Post document
               </Button>
             ) : viewing.status === "posted" ? (
-              <Button style={{ flex: 1 }} disabled={busy} onClick={() => reverse(viewing)}>
+              <Button style={{ flex: 1, color: "var(--warning)", borderColor: "var(--warning)" }} disabled={busy} onClick={() => setConfirmReverse(true)}>
                 <RotateCcw size={16} />Reverse
               </Button>
             ) : (
@@ -366,6 +367,16 @@ export function JournalEntriesPage() {
           </>
         )}
       </Drawer>
+
+      <ConfirmDialog
+        open={confirmReverse}
+        title="Reverse this document?"
+        message={`This reverses document ${viewing?.document_number ?? ""} with a new linked G/L reversal document and marks it reversed. This cannot be undone directly — only by reversing the reversal.`}
+        confirmLabel="Reverse"
+        busy={busy}
+        onCancel={() => setConfirmReverse(false)}
+        onConfirm={() => { setConfirmReverse(false); if (viewing) reverse(viewing); }}
+      />
     </div>
   );
 }
@@ -380,6 +391,10 @@ function DocumentView({ entry }: { entry: JournalEntry }) {
     { key: "account_name", header: "Name", emphasis: "secondary" },
     { key: "assignment", header: "Assignment", width: 100, emphasis: "secondary",
       render: (l) => l.assignment || "" },
+    { key: "cost_center", header: "CC", mono: true, width: 60, emphasis: "secondary",
+      render: (l) => l.cost_center_code ? <span title={l.cost_center_name ?? undefined}>{l.cost_center_code}</span> : "—" },
+    { key: "profit_center", header: "PC", mono: true, width: 60, emphasis: "secondary",
+      render: (l) => l.profit_center_code ? <span title={l.profit_center_name ?? undefined}>{l.profit_center_code}</span> : "—" },
     { key: "debit", header: "Debit", numeric: true, width: 100,
       render: (l) => (l.debit_credit === "D" ? <span className="tnum">{money(l.amount)}</span> : "") },
     { key: "credit", header: "Credit", numeric: true, width: 100,

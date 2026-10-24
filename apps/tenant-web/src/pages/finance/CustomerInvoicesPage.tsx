@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Check, FileText } from "lucide-react";
+import { Plus, Trash2, Check, FileText, RotateCcw } from "lucide-react";
 import {
   Button, Pill, type PillTone, Drawer, Tabs, SectionHeader, DataTable, type Column, useToast,
-  fmtMoney,
+  fmtMoney, ConfirmDialog,
 } from "@future-erp/ui-kit";
 import { useAr } from "./useAr";
 import { useFinance } from "./useFinance";
@@ -32,6 +32,7 @@ export function CustomerInvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<"new" | CustomerInvoice | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmReverse, setConfirmReverse] = useState(false);
 
   // compose
   const [customer, setCustomer] = useState("");
@@ -130,6 +131,15 @@ export function CustomerInvoicesPage() {
     } catch (e) { toast((e as Error).message); } finally { setBusy(false); }
   };
 
+  const reverseExisting = async (inv: CustomerInvoice) => {
+    setBusy(true);
+    try {
+      const reversed = await api.reverseInvoice(inv.id);
+      toast(`Reversed ${reversed.invoice_number}`);
+      setMode(null); await reload();
+    } catch (e) { toast((e as Error).message); } finally { setBusy(false); }
+  };
+
   const settleTone: Record<string, PillTone> = { paid: "success", partial: "warning", open: "danger", unposted: "neutral" };
   const columns: Column<CustomerInvoice>[] = [
     { key: "invoice_number", header: "Invoice", mono: true, width: 120,
@@ -182,9 +192,13 @@ export function CustomerInvoicesPage() {
               <Button variant="primary" style={{ flex: 1 }} disabled={busy} onClick={() => postExisting(viewing)}>
                 <Check size={16} />Post invoice
               </Button>
+            ) : viewing.status === "posted" ? (
+              <Button style={{ flex: 1, color: "var(--warning)", borderColor: "var(--warning)" }} disabled={busy} onClick={() => setConfirmReverse(true)}>
+                <RotateCcw size={16} />Reverse
+              </Button>
             ) : (
               <span style={{ color: "var(--text-faint)", fontSize: 12 }}>
-                Posted · linked to G/L {viewing.journal_document}
+                This invoice has been reversed.
               </span>
             )
           ) : (
@@ -263,6 +277,16 @@ export function CustomerInvoicesPage() {
           </>
         )}
       </Drawer>
+
+      <ConfirmDialog
+        open={confirmReverse}
+        title="Reverse this invoice?"
+        message={`This reverses ${viewing?.invoice_number ?? "this invoice"} with a linked G/L reversal document and marks it cancelled. This cannot be undone directly — only by reversing the reversal.`}
+        confirmLabel="Reverse"
+        busy={busy}
+        onCancel={() => setConfirmReverse(false)}
+        onConfirm={() => { setConfirmReverse(false); if (viewing) reverseExisting(viewing); }}
+      />
     </div>
   );
 }

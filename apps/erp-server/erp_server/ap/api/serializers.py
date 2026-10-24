@@ -1,5 +1,8 @@
 from rest_framework import serializers
 
+from erp_server.common.payment_terms import due_date_from_terms
+from erp_server.common.validators import validate_unique_code
+
 from ..models import Vendor, VendorBill, VendorBillLine, VendorBillLineTax
 
 ARCHIVE_FIELDS = ["is_archived", "archived_at", "is_system"]
@@ -11,6 +14,10 @@ class VendorSerializer(serializers.ModelSerializer):
         fields = ["id", "code", "name", "gstin", "state", "email", "payment_terms",
                   "payable_account", "created_at", *ARCHIVE_FIELDS]
         read_only_fields = ["id", "created_at", "archived_at", "is_system"]
+
+    def validate_code(self, value):
+        tenant = self.context["request"].user.tenant
+        return validate_unique_code(Vendor, tenant, value, self.instance)
 
 
 class LineTaxSerializer(serializers.ModelSerializer):
@@ -71,6 +78,10 @@ class VendorBillSerializer(serializers.ModelSerializer):
             validated["baseline_date"] = validated.get("bill_date")
         if not validated.get("payment_terms") and validated.get("vendor"):
             validated["payment_terms"] = validated["vendor"].payment_terms
+        if not validated.get("due_date"):
+            due = due_date_from_terms(validated.get("baseline_date"), validated.get("payment_terms"))
+            if due:
+                validated["due_date"] = due
         bill = VendorBill.objects.create(tenant=tenant, **validated)
         for idx, ln in enumerate(lines, start=1):
             VendorBillLine.objects.create(

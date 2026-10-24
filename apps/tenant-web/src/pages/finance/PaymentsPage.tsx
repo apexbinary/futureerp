@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Check, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Plus, Check, ArrowDownLeft, ArrowUpRight, RotateCcw } from "lucide-react";
 import {
   Button, Pill, type PillTone, Drawer, Tabs, SectionHeader, DataTable, type Column, useToast, fmtMoney,
+  ConfirmDialog,
 } from "@future-erp/ui-kit";
 import { useAuth } from "@future-erp/ui-kit";
 import { paymentsApi, type Payment, type Direction } from "../../data/paymentsApi";
@@ -31,7 +32,8 @@ export function PaymentsPage() {
   const [filter, setFilter] = useState<Direction | "all">("all");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"new" | Payment | null>(null);
+  const [confirmReverse, setConfirmReverse] = useState(false);
 
   // compose
   const [direction, setDirection] = useState<Direction>("receipt");
@@ -44,12 +46,12 @@ export function PaymentsPage() {
 
   // Load the party's open items when party/direction changes (for allocation).
   useEffect(() => {
-    if (!open || !party) { setOpenDocs([]); return; }
+    if (mode !== "new" || !party) { setOpenDocs([]); return; }
     const run = direction === "receipt"
       ? ar.openItems(party).then((xs) => xs.map((i) => ({ id: i.id, label: `${i.invoice_number} · due ${i.due_date ?? i.invoice_date}`, outstanding: i.outstanding })))
       : ap.openItems(party).then((xs) => xs.map((b) => ({ id: b.id, label: `${b.bill_number} · due ${b.due_date ?? b.bill_date}`, outstanding: b.outstanding })));
     run.then(setOpenDocs).catch(() => setOpenDocs([]));
-  }, [open, party, direction, ar, ap]);
+  }, [mode, party, direction, ar, ap]);
 
   const reload = () => api.list().then(setPayments).catch((e) => toast(e.message));
   useEffect(() => {
@@ -68,7 +70,7 @@ export function PaymentsPage() {
     { key: "payment", label: "Payments", count: payments.filter((p) => p.direction === "payment").length },
   ];
 
-  const openNew = () => { setDirection("receipt"); setParty(""); setAmount(""); setDate(today()); setBank(""); setAlloc({}); setOpen(true); };
+  const openNew = () => { setDirection("receipt"); setParty(""); setAmount(""); setDate(today()); setBank(""); setAlloc({}); setMode("new"); };
 
   const allocatedTotal = Object.values(alloc).reduce((s, v) => s + (Number(v) || 0), 0);
   const effectiveAmount = allocatedTotal > 0 ? String(allocatedTotal) : amount;
@@ -91,11 +93,20 @@ export function PaymentsPage() {
       });
       const posted = await api.post(created.id);
       toast(`Posted ${posted.payment_number} · G/L ${posted.journal_document}`);
-      setOpen(false); await reload();
+      setMode(null); await reload();
     } catch (e) { toast((e as Error).message); } finally { setBusy(false); }
   };
 
-  const statusTone: Record<string, PillTone> = { draft: "neutral", posted: "success" };
+  const reverseExisting = async (p: Payment) => {
+    setBusy(true);
+    try {
+      const reversed = await api.reverse(p.id);
+      toast(`Reversed ${reversed.payment_number}`);
+      setMode(null); await reload();
+    } catch (e) { toast((e as Error).message); } finally { setBusy(false); }
+  };
+
+  const statusTone: Record<string, PillTone> = { draft: "neutral", posted: "success", cancelled: "warning" };
   const columns: Column<Payment>[] = [
     { key: "payment_number", header: "Number", mono: true, width: 120, render: (p) => <span className="mono" style={{ fontWeight: 600 }}>{p.payment_number || "—"}</span> },
     { key: "direction", header: "Type", width: 120,
@@ -110,6 +121,7 @@ export function PaymentsPage() {
   ];
 
   const parties = direction === "receipt" ? customers : vendors;
+  const viewing = mode && mode !== "new" ? (mode as Payment) : null;
 
   return (
     <div className={page.inner}>
@@ -123,10 +135,31 @@ export function PaymentsPage() {
         <div style={{ flex: 1, minWidth: 0 }}><Tabs tabs={tabs} active={filter} onChange={(k) => setFilter(k as Direction | "all")} /></div>
       </div>
       <SectionHeader title="Payments" right={loading ? "Loading…" : `${rows.length} shown`} />
-      <DataTable columns={columns} rows={rows} getRowId={(p) => p.id} empty={loading ? "Loading…" : "No payments yet."} />
+      <DataTable columns={columns} rows={rows} getRowId={(p) => p.id} onRowClick={(p) => setMode(p)} empty={loading ? "Loading…" : "No payments yet."} />
 
-      <Drawer open={open} onClose={() => setOpen(false)} title="New payment" subtitle="Receipt or payment"
-        footer={<Button variant="primary" style={{ flex: 1 }} disabled={busy} onClick={save}><Check size={16} />Record &amp; post</Button>}>
+      <Drawer
+        open={mode !== null}
+        onClose={() => setMode(null)}
+        title={viewing ? (viewing.payment_number || "Draft payment") : "New payment"}
+        subtitle={viewing ? viewing.party_name : "Receipt or payment"}
+        footer={
+          viewing ? (
+            viewing.status === "posted" ? (
+              <Button style={{ flex: 1, color: "var(--warning)", borderColor: "var(--warning)" }} disabled={busy} onClick={() => setConfirmReverse(true)}>
+                <RotateCcw size={16} />Reverse
+              </Button>
+            ) : viewing.status === "cancelled" ? (
+              <span style={{ color: "var(--text-faint)", fontSize: 12 }}>This payment has been reversed.</span>
+            ) : (
+              <span style={{ color: "var(--text-faint)", fontSize: 12 }}>Draft payment.</span>
+            )
+          ) : (
+            <Button variant="primary" style={{ flex: 1 }} disabled={busy} onClick={save}><Check size={16} />Record &amp; post</Button>
+          )
+        }
+      >
+        {viewing ? <PaymentView p={viewing} /> : (
+        <>
         <div className={f.docField} style={{ marginBottom: 14 }}>
           <span className={f.docK}>Type</span>
           <div className={f.dcToggle} style={{ height: 36 }}>
@@ -183,7 +216,37 @@ export function PaymentsPage() {
             {bankOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </label>
+        </>
+        )}
       </Drawer>
+
+      <ConfirmDialog
+        open={confirmReverse}
+        title="Reverse this payment?"
+        message={`This reverses ${viewing?.payment_number ?? "this payment"} with a linked G/L reversal document and marks it cancelled. Any invoices/bills it paid will show the outstanding balance again. This cannot be undone directly — only by reversing the reversal.`}
+        confirmLabel="Reverse"
+        busy={busy}
+        onCancel={() => setConfirmReverse(false)}
+        onConfirm={() => { setConfirmReverse(false); if (viewing) reverseExisting(viewing); }}
+      />
+    </div>
+  );
+}
+
+function PaymentView({ p }: { p: Payment }) {
+  const statusTone: Record<string, PillTone> = { draft: "neutral", posted: "success", cancelled: "warning" };
+  return (
+    <div className={f.docMeta}>
+      <div className={f.docField}><span className={f.docK}>Status</span>
+        <span className={f.docV}><Pill tone={statusTone[p.status]} dot>{p.status}</Pill></span></div>
+      <div className={f.docField}><span className={f.docK}>Type</span>
+        <span className={f.docV}>{p.direction === "receipt" ? "Receipt (in)" : "Payment (out)"}</span></div>
+      <div className={f.docField}><span className={f.docK}>{p.direction === "receipt" ? "Customer" : "Vendor"}</span>
+        <span className={f.docV}>{p.party_name}</span></div>
+      <div className={f.docField}><span className={f.docK}>Date</span><span className={f.docV}>{p.payment_date}</span></div>
+      <div className={f.docField}><span className={f.docK}>Amount</span><span className={f.docV}>{fmtMoney(p.amount)}</span></div>
+      {p.reference && <div className={f.docField}><span className={f.docK}>Reference</span><span className={f.docV}>{p.reference}</span></div>}
+      <div className={f.docField}><span className={f.docK}>G/L document</span><span className={f.docV}>{p.journal_document ?? "—"}</span></div>
     </div>
   );
 }

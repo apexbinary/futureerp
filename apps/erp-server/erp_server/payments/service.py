@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from django.db import models, transaction
 
 from erp_server.finance.models import GLAccount, JournalEntry, JournalEntryLine
-from erp_server.finance.service import post_journal_entry
+from erp_server.finance.service import post_journal_entry, reverse_journal_entry
 
 from .models import Payment
 
@@ -93,4 +93,25 @@ def post_payment(p: Payment) -> Payment:
     p.status = Payment.Status.POSTED
     p.posted_at = datetime.now(timezone.utc)
     p.save(update_fields=["payment_number", "journal_entry", "status", "posted_at"])
+    return p
+
+
+@transaction.atomic
+def reverse_payment(p: Payment, created_by=None) -> Payment:
+    """POSTED → CANCELLED: reverses the linked G/L document (never deletes).
+
+    Allocations are left in place for the audit trail — CustomerInvoice/VendorBill
+    .paid_amount only counts allocations whose payment is still 'posted', so moving
+    this payment to 'cancelled' automatically restores the invoices'/bills' outstanding
+    balances without touching PaymentAllocation rows.
+    """
+    p = Payment.objects.select_for_update().get(pk=p.pk)
+    if p.status != Payment.Status.POSTED:
+        raise PaymentError(f"Only posted payments can be reversed (is '{p.status}').")
+    if not p.journal_entry_id:
+        raise PaymentError("Payment has no linked journal entry to reverse.")
+
+    reverse_journal_entry(p.journal_entry, created_by=created_by)
+    p.status = Payment.Status.CANCELLED
+    p.save(update_fields=["status"])
     return p

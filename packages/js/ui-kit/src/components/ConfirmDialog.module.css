@@ -1,0 +1,19 @@
+.scrim {
+  position: fixed; inset: 0; z-index: 80; background: rgba(6, 8, 14, .5);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  backdrop-filter: blur(2px);
+}
+.panel {
+  width: 380px; max-width: 100%; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg, 12px); box-shadow: var(--shadow-lg); padding: 24px; text-align: center;
+}
+.iconWrap {
+  width: 44px; height: 44px; border-radius: 50%; background: var(--danger-soft);
+  color: var(--danger); display: grid; place-items: center; margin: 0 auto 14px;
+}
+.title { margin: 0 0 8px; font-size: 16px; font-weight: 700; color: var(--text); }
+.message { margin: 0 0 20px; font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+.actions { display: flex; gap: 10px; }
+.actions > * { flex: 1; justify-content: center; }
+.danger { background: var(--danger); color: #fff; border-color: transparent; }
+.danger:hover { filter: brightness(0.92); }

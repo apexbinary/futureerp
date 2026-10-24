@@ -67,7 +67,11 @@ export interface JournalLine {
   line_text?: string;
   assignment?: string;
   cost_center?: string | null;
+  cost_center_code?: string | null;
+  cost_center_name?: string | null;
   profit_center?: string | null;
+  profit_center_code?: string | null;
+  profit_center_name?: string | null;
   business_area?: string;
   segment?: string;
 }

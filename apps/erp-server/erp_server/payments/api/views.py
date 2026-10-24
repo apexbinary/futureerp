@@ -7,7 +7,7 @@ from erp_server.common.archive import ArchiveViewSetMixin
 from erp_server.rbac.permissions import HasTenant
 
 from ..models import Payment
-from ..service import PaymentError, post_payment
+from ..service import PaymentError, post_payment, reverse_payment
 from .serializers import PaymentSerializer
 
 
@@ -34,6 +34,15 @@ class PaymentViewSet(ArchiveViewSetMixin, viewsets.ModelViewSet):
         p = self.get_object()
         try:
             p = post_payment(p)
+        except PaymentError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(self.get_serializer(p).data)
+
+    @action(detail=True, methods=["post"])
+    def reverse_payment(self, request, pk=None):
+        p = self.get_object()
+        try:
+            p = reverse_payment(p, created_by=request.user)
         except PaymentError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(p).data)

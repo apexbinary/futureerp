@@ -1,5 +1,8 @@
 from rest_framework import serializers
 
+from erp_server.common.payment_terms import due_date_from_terms
+from erp_server.common.validators import validate_unique_code
+
 from ..models import (
     Customer,
     CustomerInvoice,
@@ -19,6 +22,10 @@ class CustomerSerializer(serializers.ModelSerializer):
                   "receivable_account", "created_at", *ARCHIVE_FIELDS]
         read_only_fields = ["id", "created_at", "archived_at", "is_system"]
 
+    def validate_code(self, value):
+        tenant = self.context["request"].user.tenant
+        return validate_unique_code(Customer, tenant, value, self.instance)
+
 
 class ItemSerializer(serializers.ModelSerializer):
     tax_slab_name = serializers.CharField(source="tax_slab.name", read_only=True, default=None)
@@ -28,6 +35,10 @@ class ItemSerializer(serializers.ModelSerializer):
         fields = ["id", "code", "name", "hsn", "unit_price", "tax_slab", "tax_slab_name",
                   "revenue_account", "created_at", *ARCHIVE_FIELDS]
         read_only_fields = ["id", "created_at", "archived_at", "is_system"]
+
+    def validate_code(self, value):
+        tenant = self.context["request"].user.tenant
+        return validate_unique_code(Item, tenant, value, self.instance)
 
 
 class LineTaxSerializer(serializers.ModelSerializer):
@@ -89,6 +100,10 @@ class CustomerInvoiceSerializer(serializers.ModelSerializer):
             validated["baseline_date"] = validated.get("invoice_date")
         if not validated.get("payment_terms") and validated.get("customer"):
             validated["payment_terms"] = validated["customer"].payment_terms
+        if not validated.get("due_date"):
+            due = due_date_from_terms(validated.get("baseline_date"), validated.get("payment_terms"))
+            if due:
+                validated["due_date"] = due
         inv = CustomerInvoice.objects.create(tenant=tenant, **validated)
         for idx, ln in enumerate(lines, start=1):
             CustomerInvoiceLine.objects.create(

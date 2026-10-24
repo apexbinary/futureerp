@@ -1,5 +1,5 @@
 export type Direction = "receipt" | "payment";
-export type PayStatus = "draft" | "posted";
+export type PayStatus = "draft" | "posted" | "cancelled";
 export interface Archivable { is_archived: boolean; archived_at: string | null; is_system: boolean; }
 export interface Payment extends Archivable {
   id: string; company_code: string; direction: Direction;
@@ -30,5 +30,6 @@ export function paymentsApi(authFetch: Fetcher) {
     list: (direction?: Direction) => authFetch(`/api/payments/${direction ? `?direction=${direction}` : ""}`).then(j<Payment[]>),
     create: (body: NewPayment) => send("/api/payments/", body).then(j<Payment>),
     post: (id: string) => send(`/api/payments/${id}/post_payment/`, {}).then(j<Payment>),
+    reverse: (id: string) => send(`/api/payments/${id}/reverse_payment/`, {}).then(j<Payment>),
   };
 }

@@ -71,6 +71,10 @@ class FiscalYearSerializer(serializers.ModelSerializer):
 class JournalEntryLineSerializer(serializers.ModelSerializer):
     account_number = serializers.CharField(source="gl_account.account_number", read_only=True)
     account_name = serializers.CharField(source="gl_account.name", read_only=True)
+    cost_center_code = serializers.CharField(source="cost_center.code", read_only=True, default=None)
+    cost_center_name = serializers.CharField(source="cost_center.name", read_only=True, default=None)
+    profit_center_code = serializers.CharField(source="profit_center.code", read_only=True, default=None)
+    profit_center_name = serializers.CharField(source="profit_center.name", read_only=True, default=None)
     # Auto-numbered on create when omitted.
     line_number = serializers.IntegerField(required=False)
 
@@ -79,7 +83,9 @@ class JournalEntryLineSerializer(serializers.ModelSerializer):
         fields = [
             "id", "line_number", "gl_account", "account_number", "account_name",
             "debit_credit", "posting_key", "amount", "line_text", "assignment",
-            "cost_center", "profit_center", "business_area", "segment",
+            "cost_center", "cost_center_code", "cost_center_name",
+            "profit_center", "profit_center_code", "profit_center_name",
+            "business_area", "segment",
         ]
         read_only_fields = ["id", "posting_key"]
 

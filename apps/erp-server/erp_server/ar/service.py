@@ -20,7 +20,7 @@ from decimal import Decimal
 from django.db import models, transaction
 
 from erp_server.finance.models import CompanyCode, GLAccount, JournalEntry, JournalEntryLine
-from erp_server.finance.service import post_journal_entry
+from erp_server.finance.service import post_journal_entry, reverse_journal_entry
 from erp_server.tax.service import compute_tax, determine_region
 
 from .models import CustomerInvoice, CustomerInvoiceLineTax
@@ -139,6 +139,23 @@ def post_invoice(invoice: CustomerInvoice) -> CustomerInvoice:
     invoice.status = CustomerInvoice.Status.POSTED
     invoice.posted_at = datetime.now(timezone.utc)
     invoice.save(update_fields=["invoice_number", "journal_entry", "status", "posted_at"])
+    return invoice
+
+
+@transaction.atomic
+def reverse_invoice(invoice: CustomerInvoice, created_by=None) -> CustomerInvoice:
+    """POSTED → CANCELLED: reverses the linked G/L document (never deletes)."""
+    invoice = CustomerInvoice.objects.select_for_update().get(pk=invoice.pk)
+    if invoice.status != CustomerInvoice.Status.POSTED:
+        raise InvoiceError(f"Only posted invoices can be reversed (is '{invoice.status}').")
+    if not invoice.journal_entry_id:
+        raise InvoiceError("Invoice has no linked journal entry to reverse.")
+    if invoice.paid_amount > 0:
+        raise InvoiceError("Cannot reverse an invoice with payments allocated against it.")
+
+    reverse_journal_entry(invoice.journal_entry, created_by=created_by)
+    invoice.status = CustomerInvoice.Status.CANCELLED
+    invoice.save(update_fields=["status"])
     return invoice
 
 

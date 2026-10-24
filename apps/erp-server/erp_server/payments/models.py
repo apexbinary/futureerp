@@ -23,6 +23,7 @@ class Payment(ArchivableModel):
     class Status(models.TextChoices):
         DRAFT = "draft", "Draft"
         POSTED = "posted", "Posted"
+        CANCELLED = "cancelled", "Cancelled"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey("identity.Tenant", on_delete=models.CASCADE, related_name="payments")
@@ -43,7 +44,7 @@ class Payment(ArchivableModel):
     invoice = models.ForeignKey("ar.CustomerInvoice", null=True, blank=True, on_delete=models.SET_NULL, related_name="payments")
     bill = models.ForeignKey("ap.VendorBill", null=True, blank=True, on_delete=models.SET_NULL, related_name="payments")
 
-    status = models.CharField(max_length=8, choices=Status.choices, default=Status.DRAFT)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
     journal_entry = models.ForeignKey("finance.JournalEntry", null=True, blank=True, on_delete=models.SET_NULL, related_name="source_payments")
     created_at = models.DateTimeField(auto_now_add=True)
     posted_at = models.DateTimeField(null=True, blank=True)

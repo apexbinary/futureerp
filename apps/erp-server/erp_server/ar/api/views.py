@@ -11,7 +11,7 @@ from erp_server.entitlements.permissions import HasEntitlement
 from erp_server.rbac.permissions import HasTenant
 
 from ..models import Customer, CustomerInvoice, Item
-from ..service import InvoiceError, post_invoice
+from ..service import InvoiceError, post_invoice, reverse_invoice
 from .serializers import CustomerInvoiceSerializer, CustomerSerializer, ItemSerializer
 
 
@@ -56,6 +56,16 @@ class CustomerInvoiceViewSet(_TenantScoped):
         invoice = self.get_object()
         try:
             invoice = post_invoice(invoice)
+        except InvoiceError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(self.get_serializer(invoice).data)
+
+    @action(detail=True, methods=["post"])
+    def reverse_invoice(self, request, pk=None):
+        """POSTED → CANCELLED: reverses the linked G/L document (never deletes)."""
+        invoice = self.get_object()
+        try:
+            invoice = reverse_invoice(invoice, created_by=request.user)
         except InvoiceError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(invoice).data)

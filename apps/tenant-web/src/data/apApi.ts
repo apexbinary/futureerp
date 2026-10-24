@@ -54,6 +54,7 @@ export function apApi(authFetch: Fetcher) {
     bills: (status?: BillStatus) => authFetch(`/api/ap/bills/${status ? `?status=${status}` : ""}`).then(j<VendorBill[]>),
     createBill: (body: NewBill) => send("/api/ap/bills/", body).then(j<VendorBill>),
     postBill: (id: string) => send(`/api/ap/bills/${id}/post_bill/`, {}).then(j<VendorBill>),
+    reverseBill: (id: string) => send(`/api/ap/bills/${id}/reverse_bill/`, {}).then(j<VendorBill>),
     openItems: (vendor?: string) =>
       authFetch(`/api/ap/bills/open_items/${vendor ? `?vendor=${vendor}` : ""}`).then(j<VendorBill[]>),
     aging: () => authFetch("/api/ap/bills/aging/").then(j<Aging>),

@@ -15,7 +15,7 @@ from decimal import Decimal
 from django.db import models, transaction
 
 from erp_server.finance.models import CompanyCode, GLAccount, JournalEntry, JournalEntryLine
-from erp_server.finance.service import post_journal_entry
+from erp_server.finance.service import post_journal_entry, reverse_journal_entry
 from erp_server.tax.service import compute_tax, determine_region
 
 from .models import VendorBill, VendorBillLineTax
@@ -136,4 +136,21 @@ def post_bill(bill: VendorBill) -> VendorBill:
     bill.status = VendorBill.Status.POSTED
     bill.posted_at = datetime.now(timezone.utc)
     bill.save(update_fields=["bill_number", "journal_entry", "status", "posted_at"])
+    return bill
+
+
+@transaction.atomic
+def reverse_bill(bill: VendorBill, created_by=None) -> VendorBill:
+    """POSTED → CANCELLED: reverses the linked G/L document (never deletes)."""
+    bill = VendorBill.objects.select_for_update().get(pk=bill.pk)
+    if bill.status != VendorBill.Status.POSTED:
+        raise BillError(f"Only posted bills can be reversed (is '{bill.status}').")
+    if not bill.journal_entry_id:
+        raise BillError("Bill has no linked journal entry to reverse.")
+    if bill.paid_amount > 0:
+        raise BillError("Cannot reverse a bill with payments allocated against it.")
+
+    reverse_journal_entry(bill.journal_entry, created_by=created_by)
+    bill.status = VendorBill.Status.CANCELLED
+    bill.save(update_fields=["status"])
     return bill

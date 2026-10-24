@@ -60,6 +60,7 @@ export function arApi(authFetch: Fetcher) {
       authFetch(`/api/ar/invoices/${status ? `?status=${status}` : ""}`).then(j<CustomerInvoice[]>),
     createInvoice: (body: NewInvoice) => send("/api/ar/invoices/", body).then(j<CustomerInvoice>),
     postInvoice: (id: string) => send(`/api/ar/invoices/${id}/post_invoice/`, {}).then(j<CustomerInvoice>),
+    reverseInvoice: (id: string) => send(`/api/ar/invoices/${id}/reverse_invoice/`, {}).then(j<CustomerInvoice>),
     openItems: (customer?: string) =>
       authFetch(`/api/ar/invoices/open_items/${customer ? `?customer=${customer}` : ""}`).then(j<CustomerInvoice[]>),
     aging: () => authFetch("/api/ar/invoices/aging/").then(j<Aging>),

@@ -6,8 +6,17 @@
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
+  /* When used as a flex child (e.g. inside a Drawer's flex-column body),
+     flex-shrink defaults to 1, which lets a tight-on-space container crush
+     this down to near-zero height instead of scrolling to show it. */
+  flex-shrink: 0;
 }
-.scroll { overflow-x: auto; }
+/* overflow-x alone implicitly computes overflow-y to 'auto' too (CSS spec),
+   turning this into an accidental 2nd vertical scroll container nested
+   inside the Drawer's own overflow-y:auto body. That linking rule upgrades
+   an explicit 'visible' right back to 'auto', so it must be a definite
+   non-visible value ('hidden') — only the Drawer manages vertical space. */
+.scroll { overflow-x: auto; overflow-y: hidden; }
 
 .table { width: 100%; border-collapse: collapse; }
 
@@ -21,7 +30,6 @@
   background: var(--surface-inset);
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
-  position: sticky; top: 0; z-index: 1;
 }
 
 .table tbody td {
@@ -55,9 +63,10 @@
 
 .empty { padding: 32px; text-align: center; color: var(--text-faint); white-space: normal; }
 
-/* Secondary columns dim slightly + hide on narrow screens */
+/* Secondary columns just dim slightly — never hidden. On narrow screens the
+   table's own horizontal scroll (.scroll { overflow-x: auto }) handles it,
+   so data is always reachable instead of silently disappearing. */
 .secondary { color: var(--text-muted); }
-@media (max-width: 760px) { th.secondary, td.secondary { display: none; } }
 
 /* ── Pagination bar ─────────────────────────────────────────── */
 .pager {

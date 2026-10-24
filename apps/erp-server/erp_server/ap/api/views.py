@@ -11,7 +11,7 @@ from erp_server.entitlements.permissions import HasEntitlement
 from erp_server.rbac.permissions import HasTenant
 
 from ..models import Vendor, VendorBill
-from ..service import BillError, post_bill
+from ..service import BillError, post_bill, reverse_bill
 from .serializers import VendorBillSerializer, VendorSerializer
 
 
@@ -50,6 +50,16 @@ class VendorBillViewSet(ArchiveViewSetMixin, _TenantScoped):
         bill = self.get_object()
         try:
             bill = post_bill(bill)
+        except BillError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(self.get_serializer(bill).data)
+
+    @action(detail=True, methods=["post"])
+    def reverse_bill(self, request, pk=None):
+        """POSTED → CANCELLED: reverses the linked G/L document (never deletes)."""
+        bill = self.get_object()
+        try:
+            bill = reverse_bill(bill, created_by=request.user)
         except BillError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(bill).data)

@@ -4,7 +4,11 @@
   align-items: center;
   gap: 2px;
   border-bottom: 1px solid var(--border);
+  /* overflow-x alone implicitly computes overflow-y to 'auto' too (CSS spec) —
+     and that linking rule upgrades an explicit 'visible' right back to 'auto',
+     so it must be a definite non-visible value ('hidden') to actually stick. */
   overflow-x: auto;
+  overflow-y: hidden;
 }
 .tab {
   position: relative;

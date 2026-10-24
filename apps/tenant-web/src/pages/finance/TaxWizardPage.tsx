@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  Check, Plus, Pencil, Archive, ArchiveRestore, ArrowLeft, ArrowRight, Save, Calculator,
+  Check, Plus, Pencil, Archive, ArchiveRestore, Save, Calculator,
 } from "lucide-react";
 import {
   Button, Drawer, DataTable, type Column, Tabs, SectionHeader, Pill, useToast, fmtMoney,
@@ -14,12 +14,19 @@ import page from "../page.module.css";
 import w from "./wizard.module.css";
 
 const STEPS = ["Regime", "Locations", "Components", "Rate bands", "Mapping"];
+const TABS: { key: string; label: string }[] = [
+  { key: "locations", label: "Locations" },
+  { key: "components", label: "Components" },
+  { key: "slabs", label: "Rate bands" },
+  { key: "mapping", label: "Mapping" },
+];
 
 export function TaxWizardPage() {
   const tax = useTax();
   const toast = useToast();
   const [regime, setRegime] = useState<TaxRegime | null>(null);
   const [step, setStep] = useState(0);
+  const [tab, setTab] = useState(TABS[0].key);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,8 +36,6 @@ export function TaxWizardPage() {
       .finally(() => setLoading(false));
   }, [tax]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const maxStep = regime ? STEPS.length - 1 : 0;
-
   return (
     <div className={page.inner}>
       <div className={page.breadcrumb}>
@@ -39,58 +44,53 @@ export function TaxWizardPage() {
       <div className={page.head}>
         <div>
           <h1>Tax Configuration</h1>
-          <p>Build your tax setup step by step — regime, locations, components, rate bands, and the rate mapping.</p>
+          <p>
+            {regime
+              ? `${regime.name} · locations, components, rate bands, and the rate mapping.`
+              : "Build your tax setup step by step — regime, locations, components, rate bands, and the rate mapping."}
+          </p>
         </div>
       </div>
 
-      <div className={w.card}>
-        <div className={w.stepper}>
-          {STEPS.map((label, i) => (
-            <button
-              key={label}
-              className={w.stepBtn}
-              disabled={i > maxStep}
-              onClick={() => i <= maxStep && setStep(i)}
-            >
-              <div className={`${w.step} ${i === step ? w.active : ""} ${i < step ? w.done : ""}`}>
-                {i < STEPS.length - 1 && <span className={w.stepLine} />}
-                <span className={w.stepDot}>{i < step ? <Check size={15} /> : i + 1}</span>
-                <span className={w.stepLabel}>{label}</span>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        <div className={w.body}>
-          {loading ? (
-            <div style={{ color: "var(--text-faint)", padding: 20 }}>Loading…</div>
-          ) : step === 0 ? (
+      {loading ? (
+        <div style={{ color: "var(--text-faint)", padding: 20 }}>Loading…</div>
+      ) : !regime ? (
+        // No regime yet — walk through the full 5-step wizard, starting with creating one.
+        <div className={w.card}>
+          <div className={w.stepper}>
+            {STEPS.map((label, i) => (
+              <button
+                key={label}
+                className={w.stepBtn}
+                disabled={i > 0}
+                onClick={() => i === 0 && setStep(0)}
+              >
+                <div className={`${w.step} ${i === step ? w.active : ""} ${i < step ? w.done : ""}`}>
+                  {i < STEPS.length - 1 && <span className={w.stepLine} />}
+                  <span className={w.stepDot}>{i < step ? <Check size={15} /> : i + 1}</span>
+                  <span className={w.stepLabel}>{label}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+          <div className={w.body}>
             <RegimeStep regime={regime} onPick={setRegime} />
-          ) : !regime ? (
-            <div style={{ color: "var(--text-faint)" }}>Select or create a regime first.</div>
-          ) : step === 1 ? (
-            <LocationsStep regime={regime} />
-          ) : step === 2 ? (
-            <ComponentsStep regime={regime} />
-          ) : step === 3 ? (
-            <SlabsStep regime={regime} />
-          ) : (
-            <MappingStep regime={regime} />
-          )}
+          </div>
         </div>
-
-        <div className={w.footerNav}>
-          <Button disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))}>
-            <ArrowLeft size={16} />Back
-          </Button>
-          <span className={w.spacer} />
-          {step < STEPS.length - 1 && (
-            <Button variant="primary" disabled={!regime} onClick={() => setStep((s) => Math.min(maxStep, s + 1))}>
-              Next<ArrowRight size={16} />
-            </Button>
-          )}
+      ) : (
+        // Regime already exists — normal tabbed management, no forced step-by-step flow.
+        <div className={w.card}>
+          <div className={w.mgrHead} style={{ padding: "14px 20px 0" }}>
+            <Tabs tabs={TABS} active={tab} onChange={setTab} />
+          </div>
+          <div className={w.body}>
+            {tab === "locations" ? <LocationsStep regime={regime} />
+              : tab === "components" ? <ComponentsStep regime={regime} />
+              : tab === "slabs" ? <SlabsStep regime={regime} />
+              : <MappingStep regime={regime} />}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
