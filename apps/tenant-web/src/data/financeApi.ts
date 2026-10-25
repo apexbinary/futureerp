@@ -49,6 +49,7 @@ export interface CompanyCode {
   chart_code: string;
 }
 
+export interface ExchangeRate { id: string; currency: string; rate_date: string; rate_to_base: string; created_at: string; }
 export interface PostingPeriod { id: string; period: number; start_date: string; end_date: string; is_open: boolean; }
 export interface FiscalYear {
   id: string; company_code: string; company_code_code: string;
@@ -143,6 +144,11 @@ export interface BalanceSheet {
   total_assets: string; total_liabilities: string; total_equity: string;
   total_liabilities_equity: string; balanced: boolean;
 }
+export interface GstRow { component: string; name: string; output_tax: string; input_tax: string; net_payable: string; }
+export interface GstSummary {
+  from: string | null; to: string | null; rows: GstRow[];
+  total_output_tax: string; total_input_tax: string; total_net_payable: string;
+}
 
 type ArchivedFilter = "false" | "true" | "all";
 
@@ -167,6 +173,8 @@ export function financeApi(authFetch: Fetcher) {
     updateCompanyCode: (id: string, body: Partial<CompanyCode>) => send(`/api/finance/company-codes/${id}/`, body, "PATCH").then(j<CompanyCode>),
     fiscalYears: () => authFetch("/api/finance/fiscal-years/").then(j<FiscalYear[]>),
     createFiscalYear: (body: Partial<FiscalYear>) => send("/api/finance/fiscal-years/", body).then(j<FiscalYear>),
+    exchangeRates: () => authFetch("/api/finance/exchange-rates/").then(j<ExchangeRate[]>),
+    createExchangeRate: (body: Partial<ExchangeRate>) => send("/api/finance/exchange-rates/", body).then(j<ExchangeRate>),
     glAccounts: () => authFetch("/api/finance/gl-accounts/").then(j<GLAccount[]>),
     journalEntries: (filter: JournalFilter = {}) => {
       const qs = new URLSearchParams(
@@ -189,5 +197,16 @@ export function financeApi(authFetch: Fetcher) {
       authFetch(`/api/finance/reports/profit-loss/${asOf ? `?as_of=${asOf}` : ""}`).then(j<ProfitLoss>),
     balanceSheet: (asOf?: string) =>
       authFetch(`/api/finance/reports/balance-sheet/${asOf ? `?as_of=${asOf}` : ""}`).then(j<BalanceSheet>),
+    revalueFx: (asOf?: string) =>
+      authFetch("/api/payments/revalue-fx/", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(asOf ? { as_of: asOf } : {}),
+      }).then(j<{ as_of: string; reversed_prior: number; posted: boolean; document: string | null; items: { document: string; type: string; currency: string; diff: string }[] }>),
+    gstSummary: (from?: string, to?: string) => {
+      const q = new URLSearchParams();
+      if (from) q.set("from", from);
+      if (to) q.set("to", to);
+      return authFetch(`/api/finance/reports/gst-summary/?${q}`).then(j<GstSummary>);
+    },
   };
 }

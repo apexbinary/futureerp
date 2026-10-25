@@ -14,11 +14,42 @@ from datetime import datetime, timezone
 
 from django.db import models, transaction
 
-from .models import JournalEntry, JournalEntryLine
+from decimal import Decimal
+
+from .models import ExchangeRate, JournalEntry, JournalEntryLine, PostingPeriod
 
 
 class PostingError(Exception):
     """Raised when a document cannot be posted (unbalanced, wrong state, no lines)."""
+
+
+def get_exchange_rate(tenant, currency: str, base_currency: str, as_of_date):
+    """1 unit of `currency` in `base_currency`, as of the latest rate on/before
+    `as_of_date`. Same currency as the base always returns 1."""
+    if currency == base_currency:
+        return Decimal("1")
+    rate = (
+        ExchangeRate.objects.filter(tenant=tenant, currency=currency, rate_date__lte=as_of_date)
+        .order_by("-rate_date")
+        .first()
+    )
+    if not rate:
+        raise PostingError(f"No exchange rate for {currency} on or before {as_of_date}.")
+    return rate.rate_to_base
+
+
+def _check_period_open(entry: JournalEntry) -> None:
+    """Refuse to post into a closed period. Silent (no-op) if the period isn't
+    configured at all — only an explicitly closed period blocks posting."""
+    period = PostingPeriod.objects.filter(
+        fiscal_year__company_code_id=entry.company_code_id,
+        fiscal_year__year=entry.posting_date.year,
+        period=entry.posting_date.month,
+    ).first()
+    if period and not period.is_open:
+        raise PostingError(
+            f"Posting period {period.period:02d}/{period.fiscal_year.year} is closed."
+        )
 
 
 def _next_document_number(company_code_id, fiscal_year: int) -> str:
@@ -49,6 +80,7 @@ def post_journal_entry(entry: JournalEntry) -> JournalEntry:
         raise PostingError(
             f"Document is not balanced: debit {entry.total_debit} ≠ credit {entry.total_credit}."
         )
+    _check_period_open(entry)
 
     entry.fiscal_year = entry.posting_date.year
     entry.document_number = _next_document_number(entry.company_code_id, entry.fiscal_year)

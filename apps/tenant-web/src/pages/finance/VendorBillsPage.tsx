@@ -8,11 +8,13 @@ import { useAp } from "./useAp";
 import { useFinance } from "./useFinance";
 import { useTax } from "./useTax";
 import type { Vendor, VendorBill, BillLine, BillStatus } from "../../data/apApi";
+import type { CompanyCode } from "../../data/financeApi";
+import type { TaxPreview } from "../../data/taxApi";
 import page from "../page.module.css";
 import f from "./finance.module.css";
 
 const statusTone: Record<BillStatus, PillTone> = { draft: "neutral", posted: "success", cancelled: "warning" };
-const money = (v: string | number) => fmtMoney(v);
+const money = (v: string | number, currency?: string) => fmtMoney(v, { currency });
 const today = () => new Date().toISOString().slice(0, 10);
 
 type DraftLine = { description: string; expense_account: string; quantity: string; unit_price: string; tax_slab: string };
@@ -28,8 +30,10 @@ export function VendorBillsPage() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [expenseOpts, setExpenseOpts] = useState<{ value: string; label: string }[]>([]);
   const [slabOpts, setSlabOpts] = useState<{ value: string; label: string }[]>([]);
+  const [companyCodes, setCompanyCodes] = useState<CompanyCode[]>([]);
   const [companyCode, setCompanyCode] = useState("");
-  const [filter, setFilter] = useState<BillStatus | "all">("all");
+  const [lineTax, setLineTax] = useState<Record<number, TaxPreview>>({});
+  const [filter, setFilter] = useState<BillStatus | "all" | "unpaid">("all");
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<"new" | VendorBill | null>(null);
   const [busy, setBusy] = useState(false);
@@ -42,13 +46,14 @@ export function VendorBillsPage() {
   const [paymentTerms, setPaymentTerms] = useState("");
   const [vendorRef, setVendorRef] = useState("");
   const [notes, setNotes] = useState("");
+  const [currency, setCurrency] = useState("INR");
   const [lines, setLines] = useState<DraftLine[]>([emptyLine()]);
 
   const reload = () => ap.bills().then(setBills).catch((e) => toast(e.message));
   useEffect(() => {
     Promise.all([ap.bills(), ap.vendors(), finance.glAccounts(), finance.companyCodes()])
       .then(([b, v, acc, cc]) => {
-        setBills(b); setVendors(v);
+        setBills(b); setVendors(v); setCompanyCodes(cc);
         setExpenseOpts(acc.filter((x) => x.account_type === "expense" || x.account_type === "asset").map((x) => ({ value: x.id, label: `${x.account_number} · ${x.name}` })));
         if (cc[0]) setCompanyCode(cc[0].id);
       }).catch((e) => toast(e.message)).finally(() => setLoading(false));
@@ -58,20 +63,52 @@ export function VendorBillsPage() {
     }).catch(() => {});
   }, [ap, finance, tax]); // eslint-disable-line
 
-  const rows = useMemo(() => (filter === "all" ? bills : bills.filter((b) => b.status === filter)), [bills, filter]);
+  // Live tax preview while entering lines — same computation the server runs on posting.
+  useEffect(() => {
+    const supplierState = companyCodes.find((c) => c.id === companyCode)?.state ?? "";
+    const vendorState = vendors.find((v) => v.id === vendor)?.state ?? "";
+    if (!supplierState || !vendorState) { setLineTax({}); return; }
+    const handle = setTimeout(() => {
+      Promise.all(
+        lines.map(async (l, idx) => {
+          const base = (Number(l.quantity) || 0) * (Number(l.unit_price) || 0);
+          if (!l.tax_slab || !base) return null;
+          try {
+            return [idx, await tax.preview(l.tax_slab, supplierState, vendorState, String(base))] as const;
+          } catch {
+            return null;
+          }
+        }),
+      ).then((entries) => {
+        const map: Record<number, TaxPreview> = {};
+        for (const e of entries) if (e) map[e[0]] = e[1];
+        setLineTax(map);
+      });
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [lines, vendor, companyCode, companyCodes, vendors, tax]);
+
+  const isUnpaid = (b: VendorBill) => b.status === "posted" && Number(b.outstanding) > 0;
+  const rows = useMemo(
+    () => (filter === "all" ? bills : filter === "unpaid" ? bills.filter(isUnpaid) : bills.filter((b) => b.status === filter)),
+    [bills, filter],
+  );
   const tabs = [
     { key: "all", label: "All", count: bills.length },
     { key: "draft", label: "Drafts", count: bills.filter((b) => b.status === "draft").length },
     { key: "posted", label: "Posted", count: bills.filter((b) => b.status === "posted").length },
+    { key: "unpaid", label: "Unpaid", count: bills.filter(isUnpaid).length },
   ];
 
   const subtotal = lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unit_price) || 0), 0);
+  const taxTotal = Object.values(lineTax).reduce((s, p) => s + Number(p.total_tax), 0);
+  const grandTotal = subtotal + taxTotal;
   const setLine = (i: number, patch: Partial<DraftLine>) => setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
   const openNew = () => {
     const first = vendors[0];
     setVendor(first?.id ?? ""); setBillDate(today()); setBaselineDate(today());
-    setDueDate(""); setPaymentTerms(first?.payment_terms ?? ""); setVendorRef(""); setNotes("");
-    setLines([emptyLine()]); setMode("new");
+    setDueDate(""); setPaymentTerms(first?.payment_terms ?? ""); setVendorRef(""); setNotes(""); setCurrency("INR");
+    setLines([emptyLine()]); setLineTax({}); setMode("new");
   };
   const pickVendor = (id: string) => {
     setVendor(id);
@@ -89,7 +126,7 @@ export function VendorBillsPage() {
       const created = await ap.createBill({
         company_code: companyCode, vendor, bill_date: billDate, vendor_ref: vendorRef,
         baseline_date: baselineDate || null, due_date: dueDate || null,
-        payment_terms: paymentTerms, notes,
+        payment_terms: paymentTerms, notes, currency,
         lines: valid.map((l, idx) => ({ line_number: idx + 1, description: l.description, expense_account: l.expense_account, quantity: l.quantity, unit_price: l.unit_price, tax_slab: l.tax_slab || null }) as BillLine),
       });
       if (thenPost) { const p = await ap.postBill(created.id); toast(`Posted ${p.bill_number} · G/L ${p.journal_document}`); setMode(p); }
@@ -113,8 +150,8 @@ export function VendorBillsPage() {
     { key: "bill_number", header: "Invoice", mono: true, width: 120, render: (b) => <span className="mono" style={{ fontWeight: 600 }}>{b.bill_number || "—"}</span> },
     { key: "vendor_name", header: "Vendor" },
     { key: "bill_date", header: "Date", width: 110, emphasis: "secondary" },
-    { key: "grand_total", header: "Total", numeric: true, width: 120, render: (b) => <span className="tnum">{money(b.grand_total)}</span> },
-    { key: "outstanding", header: "Outstanding", numeric: true, width: 120, render: (b) => <span className="tnum" style={{ color: Number(b.outstanding) > 0 ? "var(--danger)" : "var(--text-faint)" }}>{money(b.outstanding)}</span> },
+    { key: "grand_total", header: "Total", numeric: true, width: 120, render: (b) => <span className="tnum">{money(b.grand_total, b.currency)}</span> },
+    { key: "outstanding", header: "Outstanding", numeric: true, width: 120, render: (b) => <span className="tnum" style={{ color: Number(b.outstanding) > 0 ? "var(--danger)" : "var(--text-faint)" }}>{money(b.outstanding, b.currency)}</span> },
     { key: "settlement_status", header: "Clearing", width: 110, render: (b) => (b.status === "posted" ? <Pill tone={settleTone[b.settlement_status]} dot>{b.settlement_status}</Pill> : <Pill tone="neutral">{b.status}</Pill>) },
   ];
   const viewing = mode && mode !== "new" ? (mode as VendorBill) : null;
@@ -128,7 +165,7 @@ export function VendorBillsPage() {
       </div>
 
       <div className={page.toolbar}>
-        <div style={{ flex: 1, minWidth: 0 }}><Tabs tabs={tabs} active={filter} onChange={(k) => setFilter(k as BillStatus | "all")} /></div>
+        <div style={{ flex: 1, minWidth: 0 }}><Tabs tabs={tabs} active={filter} onChange={(k) => setFilter(k as BillStatus | "all" | "unpaid")} /></div>
       </div>
       <SectionHeader title="Invoices" right={loading ? "Loading…" : `${rows.length} shown`} />
       <DataTable columns={columns} rows={rows} getRowId={(b) => b.id} onRowClick={(b) => setMode(b)} empty={loading ? "Loading…" : "No vendor invoices yet."} />
@@ -168,33 +205,55 @@ export function VendorBillsPage() {
                 <input className={f.inp} placeholder="e.g. Net 30" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} /></label>
               <label className={f.docField}><span className={f.docK}>Due date</span>
                 <input type="date" className={f.inp} value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></label>
+              <label className={f.docField}><span className={f.docK}>Currency</span>
+                <select className={f.sel} value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                  <option value="INR">INR</option><option value="USD">USD</option>
+                  <option value="EUR">EUR</option><option value="GBP">GBP</option>
+                </select></label>
               <label className={f.docField}><span className={f.docK}>Notes</span>
                 <input className={f.inp} placeholder="Optional remarks" value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
             </div>
+            {currency !== "INR" && (
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
+                Amounts below are in {currency}; they'll convert to the company's base currency using the exchange rate in effect on the bill date when posted.
+              </div>
+            )}
 
             <div className={f.lineHead} style={{ gridTemplateColumns: "1.3fr 70px 100px 100px 28px" }}>
               <span>Expense account</span><span style={{ textAlign: "right" }}>Qty</span><span style={{ textAlign: "right" }}>Price</span><span>Tax</span><span />
             </div>
-            {lines.map((l, i) => (
-              <div className={f.lineRow} key={i} style={{ gridTemplateColumns: "1.3fr 70px 100px 100px 28px" }}>
-                <select className={f.sel} value={l.expense_account} onChange={(e) => setLine(i, { expense_account: e.target.value })}>
-                  <option value="">Account…</option>
-                  {expenseOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-                <input className={`${f.inp} ${f.amt}`} inputMode="decimal" value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} />
-                <input className={`${f.inp} ${f.amt}`} inputMode="decimal" placeholder="0.00" value={l.unit_price} onChange={(e) => setLine(i, { unit_price: e.target.value })} />
-                <select className={f.sel} value={l.tax_slab} onChange={(e) => setLine(i, { tax_slab: e.target.value })}>
-                  <option value="">—</option>
-                  {slabOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-                <button type="button" className={f.delBtn} onClick={() => setLines((ls) => ls.filter((_, idx) => idx !== i))}><Trash2 size={15} /></button>
-              </div>
-            ))}
+            {lines.map((l, i) => {
+              const preview = lineTax[i];
+              return (
+                <div key={i}>
+                  <div className={f.lineRow} style={{ gridTemplateColumns: "1.3fr 70px 100px 100px 28px" }}>
+                    <select className={f.sel} value={l.expense_account} onChange={(e) => setLine(i, { expense_account: e.target.value })}>
+                      <option value="">Account…</option>
+                      {expenseOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    <input className={`${f.inp} ${f.amt}`} inputMode="decimal" value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} />
+                    <input className={`${f.inp} ${f.amt}`} inputMode="decimal" placeholder="0.00" value={l.unit_price} onChange={(e) => setLine(i, { unit_price: e.target.value })} />
+                    <select className={f.sel} value={l.tax_slab} onChange={(e) => setLine(i, { tax_slab: e.target.value })}>
+                      <option value="">—</option>
+                      {slabOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    <button type="button" className={f.delBtn} onClick={() => setLines((ls) => ls.filter((_, idx) => idx !== i))}><Trash2 size={15} /></button>
+                  </div>
+                  {preview && (
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "right", padding: "2px 0 6px" }}>
+                      {preview.components.map((c) => `${c.component} ${c.percentage}%`).join(" + ")} = {money(preview.total_tax, currency)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             <button type="button" className={f.addLine} onClick={() => setLines((ls) => [...ls, emptyLine()])}><Plus size={14} />Add line</button>
 
             <div className={f.balance}>
-              <div className={f.balItem}><span className={f.balLabel}>Subtotal</span><span className={f.balVal}>{money(subtotal)}</span></div>
-              <span className={f.balStatus} style={{ color: "var(--text-muted)", fontWeight: 600 }}><FileText size={14} />Input tax computed on posting</span>
+              <div className={f.balItem}><span className={f.balLabel}>Subtotal</span><span className={f.balVal}>{money(subtotal, currency)}</span></div>
+              <div className={f.balItem}><span className={f.balLabel}>Input tax</span><span className={f.balVal}>{money(taxTotal, currency)}</span></div>
+              <div className={f.balItem}><span className={f.balLabel}>Grand total</span><span className={f.balVal} style={{ color: "var(--primary)" }}>{money(grandTotal, currency)}</span></div>
+              <span className={f.balStatus} style={{ color: "var(--text-muted)", fontWeight: 600 }}><FileText size={14} />Tax updates live as you enter lines</span>
             </div>
           </>
         )}
@@ -217,7 +276,7 @@ function BillView({ bill }: { bill: VendorBill }) {
   const columns: Column<BillLine>[] = [
     { key: "line_number", header: "#", width: 34, render: (l) => l.line_number },
     { key: "description", header: "Description", render: (l) => l.description || l.expense_account_number },
-    { key: "amount", header: "Amount", numeric: true, width: 120, render: (l) => money(l.amount ?? "0") },
+    { key: "amount", header: "Amount", numeric: true, width: 120, render: (l) => money(l.amount ?? "0", bill.currency) },
     { key: "tax", header: "Input tax", render: (l) => (l.taxes ?? []).map((t) => `${t.component_code} ${t.percentage}%`).join(" + ") || "—" },
   ];
   return (
@@ -230,14 +289,15 @@ function BillView({ bill }: { bill: VendorBill }) {
         <div className={f.docField}><span className={f.docK}>Payment terms</span><span className={f.docV}>{bill.payment_terms || "—"}</span></div>
         <div className={f.docField}><span className={f.docK}>Due date</span><span className={f.docV}>{bill.due_date ?? "—"}</span></div>
         {bill.vendor_ref && <div className={f.docField}><span className={f.docK}>Vendor ref</span><span className={f.docV}>{bill.vendor_ref}</span></div>}
+        {bill.currency !== "INR" && <div className={f.docField}><span className={f.docK}>Currency</span><span className={f.docV}>{bill.currency}</span></div>}
         <div className={f.docField}><span className={f.docK}>G/L document</span><span className={f.docV}>{bill.journal_document ?? "—"}</span></div>
       </div>
       <SectionHeader title="Lines" />
       <DataTable columns={columns} rows={bill.lines} getRowId={(l) => String(l.id ?? l.line_number)} minWidth={420} />
       <div className={f.balance} style={{ marginTop: 16, flexWrap: "wrap" }}>
-        <div className={f.balItem}><span className={f.balLabel}>Subtotal</span><span className={f.balVal}>{money(bill.subtotal)}</span></div>
-        <div className={f.balItem}><span className={f.balLabel}>Input tax</span><span className={f.balVal}>{money(bill.tax_total)}</span></div>
-        <div className={f.balItem}><span className={f.balLabel}>Grand total</span><span className={f.balVal} style={{ color: "var(--primary)" }}>{money(bill.grand_total)}</span></div>
+        <div className={f.balItem}><span className={f.balLabel}>Subtotal</span><span className={f.balVal}>{money(bill.subtotal, bill.currency)}</span></div>
+        <div className={f.balItem}><span className={f.balLabel}>Input tax</span><span className={f.balVal}>{money(bill.tax_total, bill.currency)}</span></div>
+        <div className={f.balItem}><span className={f.balLabel}>Grand total</span><span className={f.balVal} style={{ color: "var(--primary)" }}>{money(bill.grand_total, bill.currency)}</span></div>
       </div>
     </>
   );

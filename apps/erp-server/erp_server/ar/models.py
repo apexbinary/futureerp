@@ -127,8 +127,16 @@ class CustomerInvoice(models.Model):
         return self.allocations.filter(payment__status="posted").aggregate(s=Sum("amount"))["s"] or Decimal("0.00")
 
     @property
+    def credited_amount(self):
+        from decimal import Decimal
+        return sum(
+            (cn.grand_total for cn in self.credit_notes.filter(status="posted")),
+            start=Decimal("0.00"),
+        )
+
+    @property
     def outstanding(self):
-        return self.grand_total - self.paid_amount
+        return self.grand_total - self.paid_amount - self.credited_amount
 
     @property
     def settlement_status(self):
@@ -136,7 +144,7 @@ class CustomerInvoice(models.Model):
             return "unposted"
         if self.outstanding <= 0:
             return "paid"
-        return "partial" if self.paid_amount > 0 else "open"
+        return "partial" if (self.paid_amount > 0 or self.credited_amount > 0) else "open"
 
 
 class CustomerInvoiceLine(models.Model):
@@ -176,3 +184,84 @@ class CustomerInvoiceLineTax(models.Model):
 
     def __str__(self) -> str:
         return f"{self.component.code} {self.percentage}% = {self.amount}"
+
+
+class CreditNote(models.Model):
+    """A reduction against an already-posted invoice (return, pricing error, goodwill
+    adjustment, ...). On POST, mirrors the invoice's G/L postings with debit/credit
+    flipped — it reduces Trade Receivables, it never touches cash."""
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        POSTED = "posted", "Posted"
+        CANCELLED = "cancelled", "Cancelled"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("identity.Tenant", on_delete=models.CASCADE, related_name="credit_notes")
+    company_code = models.ForeignKey("finance.CompanyCode", on_delete=models.PROTECT, related_name="credit_notes")
+    customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name="credit_notes")
+    invoice = models.ForeignKey(CustomerInvoice, on_delete=models.PROTECT, related_name="credit_notes")
+    credit_note_number = models.CharField(max_length=20, blank=True)
+    note_date = models.DateField()
+    reason = models.CharField(max_length=255, blank=True)
+    currency = models.CharField(max_length=3, default="INR")
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
+    journal_entry = models.ForeignKey(
+        "finance.JournalEntry", null=True, blank=True, on_delete=models.SET_NULL, related_name="source_credit_notes",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    posted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "ar_credit_note"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return self.credit_note_number or f"(draft {self.id})"
+
+    @property
+    def subtotal(self):
+        return sum((ln.amount for ln in self.lines.all()), start=__import__("decimal").Decimal("0.00"))
+
+    @property
+    def tax_total(self):
+        from decimal import Decimal
+        return sum((t.amount for ln in self.lines.all() for t in ln.taxes.all()), start=Decimal("0.00"))
+
+    @property
+    def grand_total(self):
+        return self.subtotal + self.tax_total
+
+
+class CreditNoteLine(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("identity.Tenant", on_delete=models.CASCADE, related_name="ar_credit_note_lines")
+    credit_note = models.ForeignKey(CreditNote, on_delete=models.CASCADE, related_name="lines")
+    line_number = models.PositiveIntegerField()
+    item = models.ForeignKey(Item, null=True, blank=True, on_delete=models.SET_NULL, related_name="credit_note_lines")
+    description = models.CharField(max_length=200, blank=True)
+    quantity = models.DecimalField(max_digits=14, decimal_places=3, default=1)
+    unit_price = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    tax_slab = models.ForeignKey("tax.TaxRateSlab", null=True, blank=True, on_delete=models.SET_NULL, related_name="ar_credit_lines")
+
+    class Meta:
+        db_table = "ar_credit_note_line"
+        ordering = ["credit_note", "line_number"]
+        unique_together = [("credit_note", "line_number")]
+
+    @property
+    def amount(self):
+        return (self.quantity * self.unit_price).quantize(__import__("decimal").Decimal("0.01"))
+
+
+class CreditNoteLineTax(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("identity.Tenant", on_delete=models.CASCADE, related_name="ar_credit_line_taxes")
+    line = models.ForeignKey(CreditNoteLine, on_delete=models.CASCADE, related_name="taxes")
+    component = models.ForeignKey("tax.TaxComponent", on_delete=models.PROTECT, related_name="ar_credit_line_taxes")
+    percentage = models.DecimalField(max_digits=6, decimal_places=2)
+    amount = models.DecimalField(max_digits=18, decimal_places=2)
+
+    class Meta:
+        db_table = "ar_credit_note_line_tax"
+        ordering = ["line", "component"]

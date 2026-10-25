@@ -42,14 +42,14 @@ export function PaymentsPage() {
   const [date, setDate] = useState(today());
   const [bank, setBank] = useState("");
   const [alloc, setAlloc] = useState<Record<string, string>>({});   // docId -> allocated amount
-  const [openDocs, setOpenDocs] = useState<{ id: string; label: string; outstanding: string }[]>([]);
+  const [openDocs, setOpenDocs] = useState<{ id: string; label: string; outstanding: string; currency: string }[]>([]);
 
   // Load the party's open items when party/direction changes (for allocation).
   useEffect(() => {
     if (mode !== "new" || !party) { setOpenDocs([]); return; }
     const run = direction === "receipt"
-      ? ar.openItems(party).then((xs) => xs.map((i) => ({ id: i.id, label: `${i.invoice_number} · due ${i.due_date ?? i.invoice_date}`, outstanding: i.outstanding })))
-      : ap.openItems(party).then((xs) => xs.map((b) => ({ id: b.id, label: `${b.bill_number} · due ${b.due_date ?? b.bill_date}`, outstanding: b.outstanding })));
+      ? ar.openItems(party).then((xs) => xs.map((i) => ({ id: i.id, label: `${i.invoice_number} · due ${i.due_date ?? i.invoice_date}`, outstanding: i.outstanding, currency: i.currency })))
+      : ap.openItems(party).then((xs) => xs.map((b) => ({ id: b.id, label: `${b.bill_number} · due ${b.due_date ?? b.bill_date}`, outstanding: b.outstanding, currency: b.currency })));
     run.then(setOpenDocs).catch(() => setOpenDocs([]));
   }, [mode, party, direction, ar, ap]);
 
@@ -74,11 +74,18 @@ export function PaymentsPage() {
 
   const allocatedTotal = Object.values(alloc).reduce((s, v) => s + (Number(v) || 0), 0);
   const effectiveAmount = allocatedTotal > 0 ? String(allocatedTotal) : amount;
+  // One payment is one bank movement in one currency — allocating across open items
+  // that are themselves in different currencies isn't a real transaction.
+  const allocatedCurrencies = Array.from(new Set(
+    openDocs.filter((d) => Number(alloc[d.id]) > 0).map((d) => d.currency),
+  ));
+  const mixedCurrency = allocatedCurrencies.length > 1;
 
   const save = async () => {
     if (!companyCode) return toast("Company code unavailable.");
     if (!party) return toast(direction === "receipt" ? "Pick a customer." : "Pick a vendor.");
     if (!(Number(effectiveAmount) > 0)) return toast("Enter an amount or allocate to open items.");
+    if (mixedCurrency) return toast("Can't settle items in different currencies with one payment — split into separate payments.");
     const allocations = Object.entries(alloc)
       .filter(([, v]) => Number(v) > 0)
       .map(([id, v]) => (direction === "receipt" ? { invoice: id, amount: v } : { bill: id, amount: v }));
@@ -115,7 +122,7 @@ export function PaymentsPage() {
         : <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "var(--warning)" }}><ArrowUpRight size={14} />Payment</span> },
     { key: "party_name", header: "Party" },
     { key: "payment_date", header: "Date", width: 110, emphasis: "secondary" },
-    { key: "amount", header: "Amount", numeric: true, width: 130, render: (p) => <span className="tnum">{fmtMoney(p.amount)}</span> },
+    { key: "amount", header: "Amount", numeric: true, width: 130, render: (p) => <span className="tnum">{fmtMoney(p.amount, { currency: p.currency })}</span> },
     { key: "journal_document", header: "G/L", mono: true, width: 120, emphasis: "secondary", render: (p) => p.journal_document || "—" },
     { key: "status", header: "Status", width: 100, render: (p) => <Pill tone={statusTone[p.status]} dot>{p.status[0].toUpperCase() + p.status.slice(1)}</Pill> },
   ];
@@ -183,7 +190,7 @@ export function PaymentsPage() {
                 <div key={d.id} style={{ display: "grid", gridTemplateColumns: "1fr 96px 92px", gap: 8, alignItems: "center", padding: "7px 10px", borderBottom: idx < openDocs.length - 1 ? "1px solid var(--border)" : "0" }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 12.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.label}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-faint)" }}>outstanding {fmtMoney(d.outstanding)}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-faint)" }}>outstanding {fmtMoney(d.outstanding, { currency: d.currency })}</div>
                   </div>
                   <input className={`${f.inp} ${f.amt}`} inputMode="decimal" placeholder="0.00"
                     value={alloc[d.id] ?? ""} onChange={(e) => setAlloc((a) => ({ ...a, [d.id]: e.target.value }))} />
@@ -194,7 +201,12 @@ export function PaymentsPage() {
             </div>
             {allocatedTotal > 0 && (
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12.5, fontWeight: 600 }}>
-                <span>Allocated</span><span className="tnum">{fmtMoney(allocatedTotal)}</span>
+                <span>Allocated</span>
+                {mixedCurrency ? (
+                  <span className="tnum" style={{ color: "var(--danger)" }}>Mixed currencies — split into separate payments</span>
+                ) : (
+                  <span className="tnum">{fmtMoney(allocatedTotal, { currency: allocatedCurrencies[0] })}</span>
+                )}
               </div>
             )}
           </div>
@@ -244,7 +256,7 @@ function PaymentView({ p }: { p: Payment }) {
       <div className={f.docField}><span className={f.docK}>{p.direction === "receipt" ? "Customer" : "Vendor"}</span>
         <span className={f.docV}>{p.party_name}</span></div>
       <div className={f.docField}><span className={f.docK}>Date</span><span className={f.docV}>{p.payment_date}</span></div>
-      <div className={f.docField}><span className={f.docK}>Amount</span><span className={f.docV}>{fmtMoney(p.amount)}</span></div>
+      <div className={f.docField}><span className={f.docK}>Amount</span><span className={f.docV}>{fmtMoney(p.amount, { currency: p.currency })}</span></div>
       {p.reference && <div className={f.docField}><span className={f.docK}>Reference</span><span className={f.docV}>{p.reference}</span></div>}
       <div className={f.docField}><span className={f.docK}>G/L document</span><span className={f.docV}>{p.journal_document ?? "—"}</span></div>
     </div>

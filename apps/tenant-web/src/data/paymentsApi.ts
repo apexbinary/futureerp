@@ -4,7 +4,7 @@ export interface Archivable { is_archived: boolean; archived_at: string | null; 
 export interface Payment extends Archivable {
   id: string; company_code: string; direction: Direction;
   customer: string | null; vendor: string | null; party_name: string;
-  payment_number: string; payment_date: string; amount: string;
+  payment_number: string; payment_date: string; amount: string; currency: string;
   bank_account: string | null; reference: string; notes: string;
   invoice: string | null; bill: string | null;
   status: PayStatus; journal_entry: string | null; journal_document: string | null;

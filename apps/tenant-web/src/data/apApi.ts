@@ -22,11 +22,24 @@ export interface VendorBill extends Archivable {
 }
 
 export interface AgingRow { party_id: string; party: string; current: string; b1: string; b2: string; b3: string; b4: string; total: string; }
-export interface Aging { as_of: string; labels: Record<string, string>; rows: AgingRow[]; totals: Record<string, string>; }
+export interface Aging { as_of: string; labels: Record<string, string>; rows: AgingRow[]; totals: Record<string, string>; currency_note?: string; }
 export interface NewBill {
   company_code: string; vendor: string; bill_date: string; vendor_ref?: string;
   baseline_date?: string | null; due_date?: string | null;
-  payment_terms?: string; notes?: string; lines: BillLine[];
+  payment_terms?: string; notes?: string; currency?: string; lines: BillLine[];
+}
+
+export type DebitNoteStatus = "draft" | "posted" | "cancelled";
+export interface DebitNote {
+  id: string; company_code: string; vendor: string; vendor_name: string;
+  bill: string; bill_number: string;
+  debit_note_number: string; note_date: string; reason: string; currency: string;
+  status: DebitNoteStatus; subtotal: string; tax_total: string; grand_total: string;
+  journal_entry: string | null; journal_document: string | null;
+  lines: BillLine[]; created_at: string; posted_at: string | null;
+}
+export interface NewDebitNote {
+  bill: string; note_date: string; reason?: string; currency?: string; lines: BillLine[];
 }
 
 type Fetcher = (path: string, init?: RequestInit) => Promise<Response>;
@@ -58,5 +71,10 @@ export function apApi(authFetch: Fetcher) {
     openItems: (vendor?: string) =>
       authFetch(`/api/ap/bills/open_items/${vendor ? `?vendor=${vendor}` : ""}`).then(j<VendorBill[]>),
     aging: () => authFetch("/api/ap/bills/aging/").then(j<Aging>),
+    debitNotes: (status?: DebitNoteStatus) =>
+      authFetch(`/api/ap/debit-notes/${status ? `?status=${status}` : ""}`).then(j<DebitNote[]>),
+    createDebitNote: (body: NewDebitNote) => send("/api/ap/debit-notes/", body).then(j<DebitNote>),
+    postDebitNote: (id: string) => send(`/api/ap/debit-notes/${id}/post_debit_note/`, {}).then(j<DebitNote>),
+    reverseDebitNote: (id: string) => send(`/api/ap/debit-notes/${id}/reverse_debit_note/`, {}).then(j<DebitNote>),
   };
 }

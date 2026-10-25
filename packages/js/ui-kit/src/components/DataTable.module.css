@@ -22,7 +22,7 @@
 
 /* Header: small, medium weight, muted — NOT shouty uppercase */
 .table thead th {
-  text-align: left;
+  text-align: center;
   font-size: 11.5px;
   font-weight: 600;
   color: var(--text-muted);

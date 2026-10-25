@@ -4,21 +4,25 @@ import {
   Tabs, SectionHeader, DataTable, type Column, fmtMoney, useToast,
 } from "@future-erp/ui-kit";
 import { useFinance } from "./useFinance";
-import type { TrialBalance, ProfitLoss, BalanceSheet, TBRow, PLLine, BSLine } from "../../data/financeApi";
+import type { TrialBalance, ProfitLoss, BalanceSheet, GstSummary, TBRow, PLLine, BSLine, GstRow } from "../../data/financeApi";
 import page from "../page.module.css";
 import r from "./reports.module.css";
 
-type Report = "trial" | "pl" | "bs";
+type Report = "trial" | "pl" | "bs" | "gst";
 const today = () => new Date().toISOString().slice(0, 10);
+const firstOfMonth = () => `${today().slice(0, 7)}-01`;
 
 export function ReportsPage() {
   const finance = useFinance();
   const toast = useToast();
   const [tab, setTab] = useState<Report>("trial");
   const [asOf, setAsOf] = useState(today());
+  const [gstFrom, setGstFrom] = useState(firstOfMonth());
+  const [gstTo, setGstTo] = useState(today());
   const [tb, setTb] = useState<TrialBalance | null>(null);
   const [pl, setPl] = useState<ProfitLoss | null>(null);
   const [bs, setBs] = useState<BalanceSheet | null>(null);
+  const [gst, setGst] = useState<GstSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,6 +32,15 @@ export function ReportsPage() {
       .catch((e) => toast(e.message))
       .finally(() => setLoading(false));
   }, [finance, asOf]); // eslint-disable-line
+
+  useEffect(() => {
+    if (tab !== "gst") return;
+    setLoading(true);
+    finance.gstSummary(gstFrom, gstTo)
+      .then(setGst)
+      .catch((e) => toast(e.message))
+      .finally(() => setLoading(false));
+  }, [finance, tab, gstFrom, gstTo]); // eslint-disable-line
 
   return (
     <div className={page.inner}>
@@ -40,17 +53,33 @@ export function ReportsPage() {
           <p>Live statements derived from the posted General Ledger</p>
         </div>
         <div className={page.actions}>
-          <label className={r.asOf}>
-            <span>As of</span>
-            <input type="date" value={asOf} onChange={(e) => setAsOf(e.target.value)} />
-          </label>
+          {tab === "gst" ? (
+            <>
+              <label className={r.asOf}>
+                <span>From</span>
+                <input type="date" value={gstFrom} onChange={(e) => setGstFrom(e.target.value)} />
+              </label>
+              <label className={r.asOf}>
+                <span>To</span>
+                <input type="date" value={gstTo} onChange={(e) => setGstTo(e.target.value)} />
+              </label>
+            </>
+          ) : (
+            <label className={r.asOf}>
+              <span>As of</span>
+              <input type="date" value={asOf} onChange={(e) => setAsOf(e.target.value)} />
+            </label>
+          )}
         </div>
       </div>
 
       <div className={page.toolbar}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <Tabs
-            tabs={[{ key: "trial", label: "Trial Balance" }, { key: "pl", label: "Profit & Loss" }, { key: "bs", label: "Balance Sheet" }]}
+            tabs={[
+              { key: "trial", label: "Trial Balance" }, { key: "pl", label: "Profit & Loss" },
+              { key: "bs", label: "Balance Sheet" }, { key: "gst", label: "GST Summary" },
+            ]}
             active={tab}
             onChange={(k) => setTab(k as Report)}
           />
@@ -65,6 +94,8 @@ export function ReportsPage() {
         <ProfitLossReport pl={pl} />
       ) : tab === "bs" && bs ? (
         <BalanceSheetReport bs={bs} />
+      ) : tab === "gst" && gst ? (
+        <GstSummaryReport gst={gst} />
       ) : null}
     </div>
   );
@@ -159,6 +190,40 @@ function BalanceSheetReport({ bs }: { bs: BalanceSheet }) {
         <div><span className={r.bsFootLabel}>Total Assets</span><span className={r.bsFootVal}>{fmtMoney(bs.total_assets)}</span></div>
         <div><span className={r.bsFootLabel}>Total Liabilities + Equity</span><span className={r.bsFootVal}>{fmtMoney(bs.total_liabilities_equity)}</span></div>
       </div>
+    </>
+  );
+}
+
+/* ── GST Summary ───────────────────────────────────────────── */
+function GstSummaryReport({ gst }: { gst: GstSummary }) {
+  const netPayable = Number(gst.total_net_payable);
+  const columns: Column<GstRow>[] = [
+    { key: "component", header: "Component", mono: true, width: 100 },
+    { key: "name", header: "Name" },
+    { key: "output_tax", header: "Output tax", numeric: true, width: 150, render: (x) => fmtMoney(x.output_tax) },
+    { key: "input_tax", header: "Input tax credit", numeric: true, width: 160, render: (x) => fmtMoney(x.input_tax) },
+    { key: "net_payable", header: "Net payable", numeric: true, width: 150, render: (x) => fmtMoney(x.net_payable) },
+  ];
+  return (
+    <>
+      <div className={r.kpis}>
+        <Kpi label="Output tax collected" value={fmtMoney(gst.total_output_tax)} />
+        <Kpi label="Input tax credit" value={fmtMoney(gst.total_input_tax)} />
+        <Kpi label="Net GST payable" value={fmtMoney(gst.total_net_payable)} tone={netPayable >= 0 ? "neg" : "pos"} />
+      </div>
+      <SectionHeader title="GST Summary" right={gst.from && gst.to ? `${gst.from} to ${gst.to}` : undefined} />
+      <DataTable
+        columns={columns}
+        rows={gst.rows}
+        getRowId={(x) => x.component}
+        empty="No tax activity in this period."
+        totalRow={{
+          __label: "Total",
+          output_tax: <span className="tnum">{fmtMoney(gst.total_output_tax)}</span>,
+          input_tax: <span className="tnum">{fmtMoney(gst.total_input_tax)}</span>,
+          net_payable: <span className="tnum">{fmtMoney(gst.total_net_payable)}</span>,
+        }}
+      />
     </>
   );
 }

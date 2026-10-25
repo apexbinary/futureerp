@@ -41,7 +41,7 @@ export function DataTable<T>({
   pageSizeOptions?: number[];
   paginate?: boolean;
 }) {
-  const alignOf = (c: Column<T>) => (c.numeric ? "right" : c.align ?? "left");
+  const alignOf = (c: Column<T>) => c.align ?? "center";
   const cellCls = (c: Column<T>) =>
     [c.numeric ? "tnum" : "", c.mono ? "mono" : ""].filter(Boolean).join(" ");
 

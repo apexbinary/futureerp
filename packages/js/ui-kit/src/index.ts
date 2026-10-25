@@ -1,5 +1,5 @@
 // Formatting
-export { fmtAmount, fmtMoney, fmtCount } from "./format";
+export { fmtAmount, fmtMoney, fmtCount, currencySymbol } from "./format";
 
 // Providers
 export { ThemeProvider, useTheme } from "./theme";

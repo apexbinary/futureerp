@@ -70,6 +70,9 @@ export function AgingPage() {
       </div>
 
       <SectionHeader title={side === "ar" ? "A/R Aging" : "A/P Aging"} right={data ? `Total outstanding ${fmtMoney(data.totals.total)}` : ""} />
+      {data?.currency_note && (
+        <p style={{ fontSize: 12, color: "var(--text-faint)", margin: "0 0 10px" }}>{data.currency_note}</p>
+      )}
       <DataTable
         columns={columns}
         rows={data?.rows ?? []}

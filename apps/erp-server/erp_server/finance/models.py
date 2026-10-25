@@ -109,6 +109,28 @@ class CompanyCode(models.Model):
         return f"{self.code} · {self.name}"
 
 
+class ExchangeRate(models.Model):
+    """FX rate to the company's functional currency, effective from `rate_date`
+    until superseded by a later one. `rate_to_base`: how many base-currency units
+    equal 1 unit of `currency` (e.g. currency=USD, rate_to_base=84.50 → 1 USD = ₹84.50)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey(
+        "identity.Tenant", on_delete=models.CASCADE, related_name="exchange_rates"
+    )
+    currency = models.CharField(max_length=3)
+    rate_date = models.DateField()
+    rate_to_base = models.DecimalField(max_digits=18, decimal_places=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "fin_exchange_rate"
+        ordering = ["-rate_date", "currency"]
+        unique_together = [("tenant", "currency", "rate_date")]
+
+    def __str__(self) -> str:
+        return f"1 {self.currency} = {self.rate_to_base} ({self.rate_date})"
+
+
 class FiscalYear(models.Model):
     """A fiscal year for a company code; owns its posting periods."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -168,6 +190,8 @@ class JournalEntry(models.Model):
         GL = "SA", "G/L Account Document"
         VENDOR_INVOICE = "KR", "Vendor Invoice"
         CUSTOMER_INVOICE = "DR", "Customer Invoice"
+        CREDIT_NOTE = "DG", "Customer Credit Note"
+        DEBIT_NOTE = "KG", "Vendor Debit Note"
         GENERAL = "AB", "General Document"
 
     class Status(models.TextChoices):
@@ -182,7 +206,10 @@ class JournalEntry(models.Model):
         AP_BILL = "ap_bill", "Vendor invoice"
         AR_RECEIPT = "ar_receipt", "Customer receipt"
         AP_PAYMENT = "ap_payment", "Vendor payment"
+        AR_CREDIT_NOTE = "ar_credit_note", "Customer credit note"
+        AP_DEBIT_NOTE = "ap_debit_note", "Vendor debit note"
         DEPRECIATION = "depreciation", "Depreciation"
+        FX_REVALUATION = "fx_revaluation", "FX revaluation"
         REVERSAL = "reversal", "Reversal"
 
     class PartyType(models.TextChoices):
@@ -205,7 +232,10 @@ class JournalEntry(models.Model):
     )
     posting_date = models.DateField()
     document_date = models.DateField()
+    # Always the company's functional currency — foreign-currency source documents
+    # (AR/AP) are converted at this rate before their lines are booked here.
     currency = models.CharField(max_length=3, default="INR")
+    exchange_rate = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal("1"))
     reference = models.CharField(max_length=64, blank=True)
     header_text = models.CharField(max_length=255, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)

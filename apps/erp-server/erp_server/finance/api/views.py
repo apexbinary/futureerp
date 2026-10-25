@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from ..models import (
     ChartOfAccounts,
     CompanyCode,
+    ExchangeRate,
     FiscalYear,
     GLAccount,
     JournalEntry,
@@ -21,6 +22,7 @@ from ..service import PostingError, post_journal_entry, reverse_journal_entry
 from .serializers import (
     ChartOfAccountsSerializer,
     CompanyCodeSerializer,
+    ExchangeRateSerializer,
     FiscalYearSerializer,
     GLAccountSerializer,
     JournalEntrySerializer,
@@ -66,6 +68,16 @@ class CompanyCodeViewSet(_TenantScoped):
 class FiscalYearViewSet(_TenantScoped):
     queryset = FiscalYear.objects.prefetch_related("periods").all()
     serializer_class = FiscalYearSerializer
+
+
+class ExchangeRateViewSet(_TenantScoped):
+    queryset = ExchangeRate.objects.all()
+    serializer_class = ExchangeRateSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        currency = self.request.query_params.get("currency")
+        return qs.filter(currency=currency) if currency else qs
 
 
 class JournalEntryViewSet(_TenantScoped):

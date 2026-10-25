@@ -3,7 +3,7 @@ import {
   Home, FileText, BookOpen, CreditCard, Receipt, BarChart3, ClipboardList,
   Package, Layers, Warehouse, ShoppingBag, Building2, Wallet, CalendarDays,
   SlidersHorizontal, Bell, ShieldCheck, UserPlus, KeyRound, LayoutList, Grid3x3,
-  Mail, Waypoints, ScrollText, ListTree, TrendingUp,
+  Mail, Waypoints, ScrollText, ListTree, TrendingUp, Undo2, FileMinus,
 } from "lucide-react";
 import type { NavSection, ShellConfig } from "@future-erp/ui-kit";
 
@@ -21,6 +21,8 @@ export const sections: NavSection[] = [
       { label: "Chart of Accounts", path: "/finance/accounts", icon: ListTree },
       { label: "Vendors", path: "/finance/vendors", icon: Building2 },
       { label: "Vendor Invoices", path: "/finance/bills", icon: ShoppingBag },
+      { label: "Credit Notes", path: "/finance/credit-notes", icon: Undo2 },
+      { label: "Debit Notes", path: "/finance/debit-notes", icon: FileMinus },
       { label: "Payments", path: "/finance/payments", icon: CreditCard },
       { label: "Aging", path: "/finance/aging", icon: CalendarDays },
       { label: "Fixed Assets", path: "/finance/assets", icon: Boxes },

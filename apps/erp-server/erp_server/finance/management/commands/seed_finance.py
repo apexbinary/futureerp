@@ -43,12 +43,16 @@ ACCOUNTS = [
     # Revenue
     ("400000", "Sales Revenue", "revenue", "profit_loss", False),
     ("410000", "Service Revenue", "revenue", "profit_loss", False),
+    ("450000", "Realized FX Gain", "revenue", "profit_loss", False),
+    ("451000", "Unrealized FX Gain", "revenue", "profit_loss", False),
     # Expenses
     ("500000", "Cost of Goods Sold", "expense", "profit_loss", False),
     ("510000", "Office Supplies", "expense", "profit_loss", False),
     ("520000", "Rent Expense", "expense", "profit_loss", False),
     ("530000", "Salaries Expense", "expense", "profit_loss", False),
     ("540000", "Depreciation Expense", "expense", "profit_loss", False),
+    ("560000", "Realized FX Loss", "expense", "profit_loss", False),
+    ("561000", "Unrealized FX Loss", "expense", "profit_loss", False),
 ]
 
 

@@ -23,11 +23,24 @@ export interface CustomerInvoice {
 }
 
 export interface AgingRow { party_id: string; party: string; current: string; b1: string; b2: string; b3: string; b4: string; total: string; }
-export interface Aging { as_of: string; labels: Record<string, string>; rows: AgingRow[]; totals: Record<string, string>; }
+export interface Aging { as_of: string; labels: Record<string, string>; rows: AgingRow[]; totals: Record<string, string>; currency_note?: string; }
 export interface NewInvoice {
   company_code: string; customer: string; invoice_date: string;
   baseline_date?: string | null; due_date?: string | null;
-  payment_terms?: string; notes?: string; lines: InvoiceLine[];
+  payment_terms?: string; notes?: string; currency?: string; lines: InvoiceLine[];
+}
+
+export type CreditNoteStatus = "draft" | "posted" | "cancelled";
+export interface CreditNote {
+  id: string; company_code: string; customer: string; customer_name: string;
+  invoice: string; invoice_number: string;
+  credit_note_number: string; note_date: string; reason: string; currency: string;
+  status: CreditNoteStatus; subtotal: string; tax_total: string; grand_total: string;
+  journal_entry: string | null; journal_document: string | null;
+  lines: InvoiceLine[]; created_at: string; posted_at: string | null;
+}
+export interface NewCreditNote {
+  invoice: string; note_date: string; reason?: string; currency?: string; lines: InvoiceLine[];
 }
 
 type Fetcher = (path: string, init?: RequestInit) => Promise<Response>;
@@ -64,5 +77,10 @@ export function arApi(authFetch: Fetcher) {
     openItems: (customer?: string) =>
       authFetch(`/api/ar/invoices/open_items/${customer ? `?customer=${customer}` : ""}`).then(j<CustomerInvoice[]>),
     aging: () => authFetch("/api/ar/invoices/aging/").then(j<Aging>),
+    creditNotes: (status?: CreditNoteStatus) =>
+      authFetch(`/api/ar/credit-notes/${status ? `?status=${status}` : ""}`).then(j<CreditNote[]>),
+    createCreditNote: (body: NewCreditNote) => send("/api/ar/credit-notes/", body).then(j<CreditNote>),
+    postCreditNote: (id: string) => send(`/api/ar/credit-notes/${id}/post_credit_note/`, {}).then(j<CreditNote>),
+    reverseCreditNote: (id: string) => send(`/api/ar/credit-notes/${id}/reverse_credit_note/`, {}).then(j<CreditNote>),
   };
 }

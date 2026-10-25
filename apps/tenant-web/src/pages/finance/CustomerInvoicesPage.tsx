@@ -6,14 +6,17 @@ import {
 } from "@future-erp/ui-kit";
 import { useAr } from "./useAr";
 import { useFinance } from "./useFinance";
+import { useTax } from "./useTax";
 import type {
   Customer, Item, CustomerInvoice, InvoiceLine, InvoiceStatus,
 } from "../../data/arApi";
+import type { CompanyCode, ExchangeRate } from "../../data/financeApi";
+import type { TaxPreview } from "../../data/taxApi";
 import page from "../page.module.css";
 import f from "./finance.module.css";
 
 const statusTone: Record<InvoiceStatus, PillTone> = { draft: "neutral", posted: "success", cancelled: "warning" };
-const money = (v: string | number) => fmtMoney(v);
+const money = (v: string | number, currency?: string) => fmtMoney(v, { currency });
 
 type DraftLine = { item: string; quantity: string; unit_price: string };
 const emptyLine = (): DraftLine => ({ item: "", quantity: "1", unit_price: "" });
@@ -22,13 +25,17 @@ const today = () => new Date().toISOString().slice(0, 10);
 export function CustomerInvoicesPage() {
   const api = useAr();
   const finance = useFinance();
+  const tax = useTax();
   const toast = useToast();
 
   const [invoices, setInvoices] = useState<CustomerInvoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [items, setItems] = useState<Item[]>([]);
+  const [companyCodes, setCompanyCodes] = useState<CompanyCode[]>([]);
+  const [rates, setRates] = useState<ExchangeRate[]>([]);
   const [companyCode, setCompanyCode] = useState<string>("");
-  const [filter, setFilter] = useState<InvoiceStatus | "all">("all");
+  const [lineTax, setLineTax] = useState<Record<number, TaxPreview>>({});
+  const [filter, setFilter] = useState<InvoiceStatus | "all" | "unpaid">("all");
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<"new" | CustomerInvoice | null>(null);
   const [busy, setBusy] = useState(false);
@@ -41,46 +48,104 @@ export function CustomerInvoicesPage() {
   const [dueDate, setDueDate] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
   const [notes, setNotes] = useState("");
+  const [currency, setCurrency] = useState("INR");
   const [lines, setLines] = useState<DraftLine[]>([emptyLine()]);
 
   const reload = () => api.invoices().then(setInvoices).catch((e) => toast(e.message));
 
   useEffect(() => {
-    Promise.all([api.invoices(), api.customers(), api.items(), finance.companyCodes()])
-      .then(([inv, cu, it, cc]) => {
-        setInvoices(inv); setCustomers(cu); setItems(it);
+    Promise.all([api.invoices(), api.customers(), api.items(), finance.companyCodes(), finance.exchangeRates()])
+      .then(([inv, cu, it, cc, fx]) => {
+        setInvoices(inv); setCustomers(cu); setItems(it); setCompanyCodes(cc); setRates(fx);
         if (cc[0]) setCompanyCode(cc[0].id);
       })
       .catch((e) => toast(e.message))
       .finally(() => setLoading(false));
   }, [api, finance]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Live tax preview while entering lines — same computation the server runs on posting.
+  useEffect(() => {
+    const supplierState = companyCodes.find((c) => c.id === companyCode)?.state ?? "";
+    const customerState = customers.find((c) => c.id === customer)?.state ?? "";
+    if (!supplierState || !customerState) { setLineTax({}); return; }
+    const handle = setTimeout(() => {
+      Promise.all(
+        lines.map(async (l, idx) => {
+          const it = items.find((x) => x.id === l.item);
+          const base = (Number(l.quantity) || 0) * (Number(l.unit_price) || 0);
+          if (!it?.tax_slab || !base) return null;
+          try {
+            return [idx, await tax.preview(it.tax_slab, supplierState, customerState, String(base))] as const;
+          } catch {
+            return null;
+          }
+        }),
+      ).then((entries) => {
+        const map: Record<number, TaxPreview> = {};
+        for (const e of entries) if (e) map[e[0]] = e[1];
+        setLineTax(map);
+      });
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [lines, customer, companyCode, companyCodes, customers, items, tax]);
+
+  const isUnpaid = (i: CustomerInvoice) => i.status === "posted" && Number(i.outstanding) > 0;
   const rows = useMemo(
-    () => (filter === "all" ? invoices : invoices.filter((i) => i.status === filter)),
+    () => (filter === "all" ? invoices : filter === "unpaid" ? invoices.filter(isUnpaid) : invoices.filter((i) => i.status === filter)),
     [invoices, filter],
   );
   const tabs = [
     { key: "all", label: "All", count: invoices.length },
     { key: "draft", label: "Drafts", count: invoices.filter((i) => i.status === "draft").length },
     { key: "posted", label: "Posted", count: invoices.filter((i) => i.status === "posted").length },
+    { key: "unpaid", label: "Unpaid", count: invoices.filter(isUnpaid).length },
   ];
 
   const itemById = (id: string) => items.find((x) => x.id === id);
   const subtotal = lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unit_price) || 0), 0);
+  const taxTotal = Object.values(lineTax).reduce((s, p) => s + Number(p.total_tax), 0);
+  const grandTotal = subtotal + taxTotal;
 
   const setLine = (i: number, patch: Partial<DraftLine>) =>
     setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
+  const baseCurrency = companyCodes.find((c) => c.id === companyCode)?.currency || "INR";
+
+  // Item.unit_price is always in the company's base currency — when the invoice is
+  // in a foreign currency, convert it using the rate in effect on the invoice date
+  // (same lookup the backend uses at posting: latest rate on/before that date).
+  const resolveRate = (curr: string): number => {
+    if (curr === baseCurrency) return 1;
+    const candidate = rates
+      .filter((r) => r.currency === curr && r.rate_date <= invoiceDate)
+      .sort((a, b) => (a.rate_date < b.rate_date ? 1 : -1))[0];
+    return candidate ? Number(candidate.rate_to_base) : 1;
+  };
+  const priceInCurrency = (basePrice: string, curr: string): string => {
+    const rate = resolveRate(curr);
+    return rate === 1 ? basePrice : (Number(basePrice) / rate).toFixed(2);
+  };
+
   const pickItem = (i: number, itemId: string) => {
     const it = itemById(itemId);
-    setLine(i, { item: itemId, unit_price: it ? it.unit_price : "" });
+    setLine(i, { item: itemId, unit_price: it ? priceInCurrency(it.unit_price, currency) : "" });
+  };
+
+  const changeCurrency = (next: string) => {
+    setCurrency(next);
+    // Re-derive every already-picked line's price fresh from the item's base price —
+    // never convert the currently-displayed price again, or rounding would compound.
+    setLines((ls) => ls.map((l) => {
+      const it = itemById(l.item);
+      return it ? { ...l, unit_price: priceInCurrency(it.unit_price, next) } : l;
+    }));
   };
 
   const openNew = () => {
     const first = customers[0];
     setCustomer(first?.id ?? ""); setInvoiceDate(today()); setBaselineDate(today());
-    setDueDate(""); setPaymentTerms(first?.payment_terms ?? ""); setNotes("");
-    setLines([emptyLine()]); setMode("new");
+    setDueDate(""); setPaymentTerms(first?.payment_terms ?? ""); setNotes(""); setCurrency("INR");
+    setLines([emptyLine()]); setLineTax({}); setMode("new");
   };
 
   // When the customer changes, default payment terms from their master record.
@@ -101,7 +166,7 @@ export function CustomerInvoicesPage() {
       const created = await api.createInvoice({
         company_code: cc, customer, invoice_date: invoiceDate,
         baseline_date: baselineDate || null, due_date: dueDate || null,
-        payment_terms: paymentTerms, notes,
+        payment_terms: paymentTerms, notes, currency,
         lines: valid.map((l, idx) => ({
           line_number: idx + 1, item: l.item, quantity: l.quantity, unit_price: l.unit_price,
         }) as InvoiceLine),
@@ -147,9 +212,9 @@ export function CustomerInvoicesPage() {
     { key: "customer_name", header: "Customer" },
     { key: "invoice_date", header: "Date", width: 110, emphasis: "secondary" },
     { key: "grand_total", header: "Total", numeric: true, width: 120,
-      render: (i) => <span className="tnum">{money(i.grand_total)}</span> },
+      render: (i) => <span className="tnum">{money(i.grand_total, i.currency)}</span> },
     { key: "outstanding", header: "Outstanding", numeric: true, width: 120,
-      render: (i) => <span className="tnum" style={{ color: Number(i.outstanding) > 0 ? "var(--danger)" : "var(--text-faint)" }}>{money(i.outstanding)}</span> },
+      render: (i) => <span className="tnum" style={{ color: Number(i.outstanding) > 0 ? "var(--danger)" : "var(--text-faint)" }}>{money(i.outstanding, i.currency)}</span> },
     { key: "settlement_status", header: "Clearing", width: 110,
       render: (i) => (i.status === "posted" ? <Pill tone={settleTone[i.settlement_status]} dot>{i.settlement_status}</Pill> : <Pill tone="neutral">{i.status}</Pill>) },
   ];
@@ -173,7 +238,7 @@ export function CustomerInvoicesPage() {
 
       <div className={page.toolbar}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <Tabs tabs={tabs} active={filter} onChange={(k) => setFilter(k as InvoiceStatus | "all")} />
+          <Tabs tabs={tabs} active={filter} onChange={(k) => setFilter(k as InvoiceStatus | "all" | "unpaid")} />
         </div>
       </div>
 
@@ -237,7 +302,21 @@ export function CustomerInvoicesPage() {
                 <span className={f.docK}>Due date</span>
                 <input type="date" className={f.inp} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
               </label>
+              <label className={f.docField}>
+                <span className={f.docK}>Currency</span>
+                <select className={f.sel} value={currency} onChange={(e) => changeCurrency(e.target.value)}>
+                  <option value="INR">INR</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                </select>
+              </label>
             </div>
+            {currency !== "INR" && (
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
+                Amounts below are in {currency}; they'll convert to the company's base currency using the exchange rate in effect on the invoice date when posted.
+              </div>
+            )}
             <label className={f.docField} style={{ marginBottom: 16 }}>
               <span className={f.docK}>Notes</span>
               <input className={f.inp} placeholder="Optional reference / remarks" value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -249,18 +328,26 @@ export function CustomerInvoicesPage() {
             </div>
             {lines.map((l, i) => {
               const amt = (Number(l.quantity) || 0) * (Number(l.unit_price) || 0);
+              const preview = lineTax[i];
               return (
-                <div className={f.lineRow} key={i} style={{ gridTemplateColumns: "1fr 64px 110px 110px 28px" }}>
-                  <select className={f.sel} value={l.item} onChange={(e) => pickItem(i, e.target.value)}>
-                    <option value="">Select item…</option>
-                    {items.map((it) => <option key={it.id} value={it.id}>{it.code} · {it.name}{it.tax_slab_name ? ` (${it.tax_slab_name})` : ""}</option>)}
-                  </select>
-                  <input className={`${f.inp} ${f.amt}`} inputMode="decimal" value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} />
-                  <input className={`${f.inp} ${f.amt}`} inputMode="decimal" value={l.unit_price} onChange={(e) => setLine(i, { unit_price: e.target.value })} />
-                  <input className={`${f.inp} ${f.amt}`} value={money(amt)} readOnly tabIndex={-1} style={{ color: "var(--text-muted)" }} />
-                  <button type="button" className={f.delBtn} onClick={() => setLines((ls) => ls.filter((_, idx) => idx !== i))} aria-label="Remove line">
-                    <Trash2 size={15} />
-                  </button>
+                <div key={i}>
+                  <div className={f.lineRow} style={{ gridTemplateColumns: "1fr 64px 110px 110px 28px" }}>
+                    <select className={f.sel} value={l.item} onChange={(e) => pickItem(i, e.target.value)}>
+                      <option value="">Select item…</option>
+                      {items.map((it) => <option key={it.id} value={it.id}>{it.code} · {it.name}{it.tax_slab_name ? ` (${it.tax_slab_name})` : ""}</option>)}
+                    </select>
+                    <input className={`${f.inp} ${f.amt}`} inputMode="decimal" value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} />
+                    <input className={`${f.inp} ${f.amt}`} inputMode="decimal" value={l.unit_price} onChange={(e) => setLine(i, { unit_price: e.target.value })} />
+                    <input className={`${f.inp} ${f.amt}`} value={money(amt, currency)} readOnly tabIndex={-1} style={{ color: "var(--text-muted)" }} />
+                    <button type="button" className={f.delBtn} onClick={() => setLines((ls) => ls.filter((_, idx) => idx !== i))} aria-label="Remove line">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                  {preview && (
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "right", padding: "2px 0 6px" }}>
+                      {preview.components.map((c) => `${c.component} ${c.percentage}%`).join(" + ")} = {money(preview.total_tax, currency)}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -269,9 +356,11 @@ export function CustomerInvoicesPage() {
             </button>
 
             <div className={f.balance}>
-              <div className={f.balItem}><span className={f.balLabel}>Subtotal</span><span className={f.balVal}>{money(subtotal)}</span></div>
+              <div className={f.balItem}><span className={f.balLabel}>Subtotal</span><span className={f.balVal}>{money(subtotal, currency)}</span></div>
+              <div className={f.balItem}><span className={f.balLabel}>Tax</span><span className={f.balVal}>{money(taxTotal, currency)}</span></div>
+              <div className={f.balItem}><span className={f.balLabel}>Grand total</span><span className={f.balVal} style={{ color: "var(--primary)" }}>{money(grandTotal, currency)}</span></div>
               <span className={f.balStatus} style={{ color: "var(--text-muted)", fontWeight: 600 }}>
-                <FileText size={14} />Tax is computed automatically on posting
+                <FileText size={14} />Tax updates live as you enter lines
               </span>
             </div>
           </>
@@ -296,8 +385,8 @@ function InvoiceView({ inv }: { inv: CustomerInvoice }) {
     { key: "line_number", header: "#", width: 34, render: (l) => l.line_number },
     { key: "item_name", header: "Item", render: (l) => l.item_name ?? l.description },
     { key: "quantity", header: "Qty", numeric: true, width: 64 },
-    { key: "unit_price", header: "Price", numeric: true, width: 100, render: (l) => money(l.unit_price) },
-    { key: "amount", header: "Amount", numeric: true, width: 110, render: (l) => money(l.amount ?? "0") },
+    { key: "unit_price", header: "Price", numeric: true, width: 100, render: (l) => money(l.unit_price, inv.currency) },
+    { key: "amount", header: "Amount", numeric: true, width: 110, render: (l) => money(l.amount ?? "0", inv.currency) },
     { key: "tax", header: "Tax", render: (l) => (l.taxes ?? []).map((t) => `${t.component_code} ${t.percentage}%`).join(" + ") || "—" },
   ];
   return (
@@ -310,14 +399,15 @@ function InvoiceView({ inv }: { inv: CustomerInvoice }) {
         <div className={f.docField}><span className={f.docK}>Baseline date</span><span className={f.docV}>{inv.baseline_date ?? "—"}</span></div>
         <div className={f.docField}><span className={f.docK}>Payment terms</span><span className={f.docV}>{inv.payment_terms || "—"}</span></div>
         <div className={f.docField}><span className={f.docK}>Due date</span><span className={f.docV}>{inv.due_date ?? "—"}</span></div>
+        {inv.currency !== "INR" && <div className={f.docField}><span className={f.docK}>Currency</span><span className={f.docV}>{inv.currency}</span></div>}
         <div className={f.docField}><span className={f.docK}>G/L document</span><span className={f.docV}>{inv.journal_document ?? "—"}</span></div>
       </div>
       <SectionHeader title="Lines" />
       <DataTable columns={columns} rows={inv.lines} getRowId={(l) => String(l.id ?? l.line_number)} minWidth={420} />
       <div className={f.balance} style={{ marginTop: 16, flexWrap: "wrap" }}>
-        <div className={f.balItem}><span className={f.balLabel}>Subtotal</span><span className={f.balVal}>{money(inv.subtotal)}</span></div>
-        <div className={f.balItem}><span className={f.balLabel}>Tax</span><span className={f.balVal}>{money(inv.tax_total)}</span></div>
-        <div className={f.balItem}><span className={f.balLabel}>Grand total</span><span className={f.balVal} style={{ color: "var(--primary)" }}>{money(inv.grand_total)}</span></div>
+        <div className={f.balItem}><span className={f.balLabel}>Subtotal</span><span className={f.balVal}>{money(inv.subtotal, inv.currency)}</span></div>
+        <div className={f.balItem}><span className={f.balLabel}>Tax</span><span className={f.balVal}>{money(inv.tax_total, inv.currency)}</span></div>
+        <div className={f.balItem}><span className={f.balLabel}>Grand total</span><span className={f.balVal} style={{ color: "var(--primary)" }}>{money(inv.grand_total, inv.currency)}</span></div>
       </div>
     </>
   );

@@ -364,8 +364,8 @@ function MappingStep({ regime }: { regime: TaxRegime }) {
             <thead>
               <tr>
                 <th style={th}>Rate band</th>
-                {matrix.components.map((c) => <th key={c.id} style={{ ...th, textAlign: "right" }}>{c.code} %</th>)}
-                <th style={{ ...th, textAlign: "right" }}>Total</th>
+                {matrix.components.map((c) => <th key={c.id} style={th}>{c.code} %</th>)}
+                <th style={th}>Total</th>
               </tr>
             </thead>
             <tbody>
@@ -377,11 +377,11 @@ function MappingStep({ regime }: { regime: TaxRegime }) {
                     <td style={td}><div style={{ fontWeight: 600 }}>{s.name}</div>
                       <div style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>target {s.total_rate}%</div></td>
                     {matrix.components.map((c) => (
-                      <td key={c.id} style={{ ...td, textAlign: "right" }}>
+                      <td key={c.id} style={{ ...td, textAlign: "center" }}>
                         <input inputMode="decimal" value={valueOf(s.id, c.id)} placeholder="0"
                           onChange={(e) => setCell(s.id, c.id, e.target.value)}
                           style={{
-                            width: 72, height: 30, padding: "0 8px", textAlign: "right",
+                            width: 72, height: 30, padding: "0 8px", textAlign: "center",
                             border: `1px solid ${isDirty(s.id, c.id) ? "var(--warning)" : "var(--border-strong)"}`,
                             background: isDirty(s.id, c.id) ? "var(--warning-soft)" : "var(--surface)",
                             color: "var(--text)", borderRadius: "var(--r-sm)",
@@ -389,7 +389,7 @@ function MappingStep({ regime }: { regime: TaxRegime }) {
                           }} />
                       </td>
                     ))}
-                    <td style={{ ...td, textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 600, color: match ? "var(--success)" : "var(--danger)" }}>
+                    <td style={{ ...td, textAlign: "center", fontFamily: "var(--font-mono)", fontWeight: 600, color: match ? "var(--success)" : "var(--danger)" }}>
                       {total.toFixed(2)}%
                     </td>
                   </tr>
@@ -405,8 +405,8 @@ function MappingStep({ regime }: { regime: TaxRegime }) {
   );
 }
 
-const th: React.CSSProperties = { textAlign: "left", fontSize: 11.5, fontWeight: 600, color: "var(--text-muted)", padding: "9px 12px", background: "var(--surface-inset)", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" };
-const td: React.CSSProperties = { padding: "8px 12px", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" };
+const th: React.CSSProperties = { textAlign: "center", fontSize: 11.5, fontWeight: 600, color: "var(--text-muted)", padding: "9px 12px", background: "var(--surface-inset)", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" };
+const td: React.CSSProperties = { padding: "8px 12px", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap", textAlign: "center" };
 
 function MappingPreview({ slabs }: { regime: TaxRegime; slabs: TaxSlab[] }) {
   const tax = useTax();

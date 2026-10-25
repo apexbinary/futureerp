@@ -79,15 +79,19 @@ class Command(BaseCommand):
                     )
         self.stdout.write(f"Pages (incl. tabs): {Page.objects.count()}")
 
-        # 3) Default client_admin role for the demo tenant — full access
-        tenant = Tenant.objects.filter(code="abc").first()
-        if tenant:
+        # 3) Default client_admin role — full access — for every tenant.
+        tenants = list(Tenant.objects.all())
+        if not tenants:
+            self.stdout.write("No tenants yet — run seed_demo first.")
+            return
+
+        perms = list(Permission.objects.all())
+        pages = list(Page.objects.all())
+        for tenant in tenants:
             role, created = Role.objects.get_or_create(
                 tenant=tenant, key="client_admin",
                 defaults={"name": "Client Admin", "description": "Full access to everything.", "is_system": True},
             )
-            perms = list(Permission.objects.all())
-            pages = list(Page.objects.all())
             entries = [
                 RoleMatrixEntry(role=role, page=pg, permission=pm, allowed=True)
                 for pg in pages for pm in perms
@@ -99,12 +103,10 @@ class Command(BaseCommand):
             }
             to_create = [e for e in entries if (e.page_id, e.permission_id) not in existing]
             RoleMatrixEntry.objects.bulk_create(to_create)
-            # attach the demo admin user to this role
+            # attach the tenant's users to this role
             for u in tenant.users.all():
                 u.roles.add(role)
             self.stdout.write(
-                f"Role client_admin {'created' if created else 'exists'} "
+                f"[{tenant.code}] Role client_admin {'created' if created else 'exists'} "
                 f"(+{len(to_create)} matrix cells)"
             )
-        else:
-            self.stdout.write("No demo tenant 'abc' — run seed_demo first.")

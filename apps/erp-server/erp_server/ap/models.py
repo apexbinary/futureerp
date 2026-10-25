@@ -93,8 +93,16 @@ class VendorBill(ArchivableModel):
         return self.allocations.filter(payment__status="posted").aggregate(s=Sum("amount"))["s"] or Decimal("0.00")
 
     @property
+    def debited_amount(self):
+        from decimal import Decimal
+        return sum(
+            (dn.grand_total for dn in self.debit_notes.filter(status="posted")),
+            start=Decimal("0.00"),
+        )
+
+    @property
     def outstanding(self):
-        return self.grand_total - self.paid_amount
+        return self.grand_total - self.paid_amount - self.debited_amount
 
     @property
     def settlement_status(self):
@@ -102,7 +110,7 @@ class VendorBill(ArchivableModel):
             return "unposted"
         if self.outstanding <= 0:
             return "paid"
-        return "partial" if self.paid_amount > 0 else "open"
+        return "partial" if (self.paid_amount > 0 or self.debited_amount > 0) else "open"
 
 
 class VendorBillLine(models.Model):
@@ -141,4 +149,89 @@ class VendorBillLineTax(models.Model):
 
     class Meta:
         db_table = "ap_bill_line_tax"
+        ordering = ["line", "component"]
+
+
+class DebitNote(models.Model):
+    """A reduction against an already-posted vendor bill (return, pricing dispute,
+    overcharge, ...). On POST, mirrors the bill's G/L postings with debit/credit
+    flipped — it reduces Trade Payables, it never touches cash."""
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        POSTED = "posted", "Posted"
+        CANCELLED = "cancelled", "Cancelled"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("identity.Tenant", on_delete=models.CASCADE, related_name="debit_notes")
+    company_code = models.ForeignKey("finance.CompanyCode", on_delete=models.PROTECT, related_name="debit_notes")
+    vendor = models.ForeignKey(Vendor, on_delete=models.PROTECT, related_name="debit_notes")
+    bill = models.ForeignKey(VendorBill, on_delete=models.PROTECT, related_name="debit_notes")
+    debit_note_number = models.CharField(max_length=20, blank=True)
+    note_date = models.DateField()
+    reason = models.CharField(max_length=255, blank=True)
+    currency = models.CharField(max_length=3, default="INR")
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
+    journal_entry = models.ForeignKey(
+        "finance.JournalEntry", null=True, blank=True, on_delete=models.SET_NULL, related_name="source_debit_notes",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    posted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "ap_debit_note"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return self.debit_note_number or f"(draft {self.id})"
+
+    @property
+    def subtotal(self):
+        from decimal import Decimal
+        return sum((ln.amount for ln in self.lines.all()), start=Decimal("0.00"))
+
+    @property
+    def tax_total(self):
+        from decimal import Decimal
+        return sum((t.amount for ln in self.lines.all() for t in ln.taxes.all()), start=Decimal("0.00"))
+
+    @property
+    def grand_total(self):
+        return self.subtotal + self.tax_total
+
+
+class DebitNoteLine(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("identity.Tenant", on_delete=models.CASCADE, related_name="ap_debit_note_lines")
+    debit_note = models.ForeignKey(DebitNote, on_delete=models.CASCADE, related_name="lines")
+    line_number = models.PositiveIntegerField()
+    description = models.CharField(max_length=200, blank=True)
+    expense_account = models.ForeignKey(
+        "finance.GLAccount", null=True, blank=True, on_delete=models.SET_NULL, related_name="ap_debit_note_lines",
+    )
+    quantity = models.DecimalField(max_digits=14, decimal_places=3, default=1)
+    unit_price = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    tax_slab = models.ForeignKey("tax.TaxRateSlab", null=True, blank=True, on_delete=models.SET_NULL, related_name="ap_debit_lines")
+
+    class Meta:
+        db_table = "ap_debit_note_line"
+        ordering = ["debit_note", "line_number"]
+        unique_together = [("debit_note", "line_number")]
+
+    @property
+    def amount(self):
+        from decimal import Decimal
+        return (self.quantity * self.unit_price).quantize(Decimal("0.01"))
+
+
+class DebitNoteLineTax(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("identity.Tenant", on_delete=models.CASCADE, related_name="ap_debit_line_taxes")
+    line = models.ForeignKey(DebitNoteLine, on_delete=models.CASCADE, related_name="taxes")
+    component = models.ForeignKey("tax.TaxComponent", on_delete=models.PROTECT, related_name="ap_debit_line_taxes")
+    percentage = models.DecimalField(max_digits=6, decimal_places=2)
+    amount = models.DecimalField(max_digits=18, decimal_places=2)
+
+    class Meta:
+        db_table = "ap_debit_note_line_tax"
         ordering = ["line", "component"]

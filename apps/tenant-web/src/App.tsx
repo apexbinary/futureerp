@@ -9,6 +9,8 @@ import { ChartOfAccountsPage } from "./pages/finance/ChartOfAccountsPage";
 import { JournalEntriesPage } from "./pages/finance/JournalEntriesPage";
 import { TaxWizardPage } from "./pages/finance/TaxWizardPage";
 import { CustomerInvoicesPage } from "./pages/finance/CustomerInvoicesPage";
+import { CreditNotesPage } from "./pages/finance/CreditNotesPage";
+import { DebitNotesPage } from "./pages/finance/DebitNotesPage";
 import { CustomersPage } from "./pages/finance/CustomersPage";
 import { ItemsPage } from "./pages/finance/ItemsPage";
 import { ReportsPage } from "./pages/finance/ReportsPage";
@@ -43,6 +45,8 @@ const realPages: Record<string, ReactElement> = {
   "/finance/reports": <ReportsPage />,
   "/finance/vendors": <VendorsPage />,
   "/finance/bills": <VendorBillsPage />,
+  "/finance/credit-notes": <CreditNotesPage />,
+  "/finance/debit-notes": <DebitNotesPage />,
   "/finance/payments": <PaymentsPage />,
   "/finance/assets": <AssetsPage />,
   "/finance/cost-centers": <CostCentersPage />,
@@ -66,6 +70,8 @@ const PATH_ENTITLEMENT: Record<string, string> = {
   "/finance/items": "finance.ar",
   "/finance/vendors": "finance.ap",
   "/finance/bills": "finance.ap",
+  "/finance/credit-notes": "finance.ar",
+  "/finance/debit-notes": "finance.ap",
   "/finance/accounts": "finance.gl",
   "/finance/journal": "finance.gl",
   "/finance/payments": "finance.gl",

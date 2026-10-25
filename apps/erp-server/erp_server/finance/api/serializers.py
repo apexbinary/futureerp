@@ -3,6 +3,7 @@ from rest_framework import serializers
 from ..models import (
     ChartOfAccounts,
     CompanyCode,
+    ExchangeRate,
     FiscalYear,
     GLAccount,
     JournalEntry,
@@ -12,6 +13,13 @@ from ..models import (
 
 
 ARCHIVE_FIELDS = ["is_archived", "archived_at", "is_system"]
+
+
+class ExchangeRateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExchangeRate
+        fields = ["id", "currency", "rate_date", "rate_to_base", "created_at"]
+        read_only_fields = ["id", "created_at"]
 
 
 class ChartOfAccountsSerializer(serializers.ModelSerializer):
@@ -101,7 +109,7 @@ class JournalEntrySerializer(serializers.ModelSerializer):
         model = JournalEntry
         fields = [
             "id", "company_code", "company_code_code", "document_number", "fiscal_year",
-            "document_type", "posting_date", "document_date", "currency", "reference",
+            "document_type", "posting_date", "document_date", "currency", "exchange_rate", "reference",
             "header_text", "status", "reverses",
             "source_type", "source_id", "source_number",
             "party_type", "party_code", "party_name",
